@@ -26,13 +26,23 @@ public class SimulationEngine
         if (numSpins < 1)
             throw new ArgumentException("Number of spins must be at least 1", nameof(numSpins));
 
-        var symbols = config.Symbols;
-        var cumulativeWeights = new decimal[symbols.Count];
-        decimal totalWeight = 0;
-        for (int i = 0; i < symbols.Count; i++)
+        var distributions = config.GetReelDistributions();
+
+        // Per-reel cumulative probability tables for weighted drawing.
+        var symbolTables = new string[config.NumReels][];
+        var cumulativeTables = new decimal[config.NumReels][];
+        for (int reel = 0; reel < config.NumReels; reel++)
         {
-            totalWeight += symbols[i].Weight;
-            cumulativeWeights[i] = totalWeight;
+            var distribution = distributions[reel];
+            symbolTables[reel] = new string[distribution.Count];
+            cumulativeTables[reel] = new decimal[distribution.Count];
+            decimal cumulative = 0;
+            for (int i = 0; i < distribution.Count; i++)
+            {
+                symbolTables[reel][i] = distribution[i].SymbolId;
+                cumulative += distribution[i].Probability;
+                cumulativeTables[reel][i] = cumulative;
+            }
         }
 
         var reelSymbols = new string[config.NumReels];
@@ -46,7 +56,7 @@ public class SimulationEngine
         for (int spin = 0; spin < numSpins; spin++)
         {
             for (int reel = 0; reel < config.NumReels; reel++)
-                reelSymbols[reel] = DrawSymbol(symbols, cumulativeWeights, totalWeight);
+                reelSymbols[reel] = DrawSymbol(symbolTables[reel], cumulativeTables[reel]);
 
             decimal payout = PayoutEvaluator.EvaluatePayout(config, reelSymbols);
 
@@ -80,16 +90,16 @@ public class SimulationEngine
         };
     }
 
-    private string DrawSymbol(List<Symbol> symbols, decimal[] cumulativeWeights, decimal totalWeight)
+    private string DrawSymbol(string[] symbols, decimal[] cumulativeProbabilities)
     {
-        decimal randomValue = (decimal)_random.NextDouble() * totalWeight;
+        decimal randomValue = (decimal)_random.NextDouble();
 
-        for (int i = 0; i < cumulativeWeights.Length; i++)
+        for (int i = 0; i < cumulativeProbabilities.Length; i++)
         {
-            if (randomValue <= cumulativeWeights[i])
-                return symbols[i].Id;
+            if (randomValue <= cumulativeProbabilities[i])
+                return symbols[i];
         }
 
-        return symbols[^1].Id;
+        return symbols[^1];
     }
 }

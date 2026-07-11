@@ -26,11 +26,27 @@ public class PaytableDto
     public decimal BaseWager { get; set; }
 }
 
+public class ReelStopDto
+{
+    public string? SymbolId { get; set; }
+    public decimal Weight { get; set; }
+}
+
+public class ReelStripDto
+{
+    public List<ReelStopDto>? Stops { get; set; }
+}
+
 public class SlotConfigurationRequest
 {
     public string? Name { get; set; }
     public int NumReels { get; set; }
     public List<SymbolDto>? Symbols { get; set; }
+
+    /// <summary>Optional per-reel strips (one per reel). When omitted, every reel
+    /// uses the shared symbol weights from Symbols.</summary>
+    public List<ReelStripDto>? Reels { get; set; }
+
     public PaytableDto? Paytable { get; set; }
 }
 

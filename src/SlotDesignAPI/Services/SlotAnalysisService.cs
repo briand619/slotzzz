@@ -89,6 +89,15 @@ public class SlotAnalysisService : ISlotAnalysisService
             }
         }
 
+        if (request.Reels != null && request.Reels.Count > 0)
+        {
+            config.Reels = request.Reels
+                .Select(reelDto => new ReelStrip(
+                    (reelDto.Stops ?? new List<ReelStopDto>())
+                        .Select(stopDto => new ReelStop(stopDto.SymbolId ?? string.Empty, stopDto.Weight))))
+                .ToList();
+        }
+
         if (request.Paytable != null)
         {
             config.Paytable.BaseWager = request.Paytable.BaseWager;
