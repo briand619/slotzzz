@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{26AAC459-BCC3-4E50-92D2-F71927463EDB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlotMathEngine", "src\SlotMathEngine\SlotMathEngine.csproj", "{C236851B-8990-4576-BCB6-538E159F5DF8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlotMathEngine.Tests", "src\SlotMathEngine.Tests\SlotMathEngine.Tests.csproj", "{7078ACEE-001A-45AB-8BA1-B7B5CB4F7097}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C236851B-8990-4576-BCB6-538E159F5DF8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C236851B-8990-4576-BCB6-538E159F5DF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C236851B-8990-4576-BCB6-538E159F5DF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C236851B-8990-4576-BCB6-538E159F5DF8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7078ACEE-001A-45AB-8BA1-B7B5CB4F7097}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7078ACEE-001A-45AB-8BA1-B7B5CB4F7097}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7078ACEE-001A-45AB-8BA1-B7B5CB4F7097}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7078ACEE-001A-45AB-8BA1-B7B5CB4F7097}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{C236851B-8990-4576-BCB6-538E159F5DF8} = {26AAC459-BCC3-4E50-92D2-F71927463EDB}
+		{7078ACEE-001A-45AB-8BA1-B7B5CB4F7097} = {26AAC459-BCC3-4E50-92D2-F71927463EDB}
+	EndGlobalSection
+EndGlobal
