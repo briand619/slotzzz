@@ -48,16 +48,17 @@
   ],
   "paytable": {
     "baseWager": 1.0,
+    "wagerMode": "betPerLine",
     "payLines": [
       {
         "id": 0,
         "reelPositions": [0, 1, 2],
         "rowPositions": [0, 0, 0],
         "rules": [
-          { "symbolIds": ["seven", "seven", "seven"], "multiplier": 20.0 },
-          { "symbolIds": ["bell", "bell", "bell"], "multiplier": 10.0 },
-          { "symbolIds": ["bar", "bar", "bar"], "multiplier": 2.5 },
-          { "symbolIds": ["cherry", "cherry", "cherry"], "multiplier": 1.4 }
+          { "symbolIds": ["seven", "seven", "seven"], "multiplier": 60.0 },
+          { "symbolIds": ["bell", "bell", "bell"], "multiplier": 30.0 },
+          { "symbolIds": ["bar", "bar", "bar"], "multiplier": 8.0 },
+          { "symbolIds": ["cherry", "cherry", "cherry"], "multiplier": 4.0 }
         ]
       },
       {
@@ -65,10 +66,10 @@
         "reelPositions": [0, 1, 2],
         "rowPositions": [1, 1, 1],
         "rules": [
-          { "symbolIds": ["seven", "seven", "seven"], "multiplier": 20.0 },
-          { "symbolIds": ["bell", "bell", "bell"], "multiplier": 10.0 },
-          { "symbolIds": ["bar", "bar", "bar"], "multiplier": 2.5 },
-          { "symbolIds": ["cherry", "cherry", "cherry"], "multiplier": 1.4 }
+          { "symbolIds": ["seven", "seven", "seven"], "multiplier": 60.0 },
+          { "symbolIds": ["bell", "bell", "bell"], "multiplier": 30.0 },
+          { "symbolIds": ["bar", "bar", "bar"], "multiplier": 8.0 },
+          { "symbolIds": ["cherry", "cherry", "cherry"], "multiplier": 4.0 }
         ]
       },
       {
@@ -76,10 +77,10 @@
         "reelPositions": [0, 1, 2],
         "rowPositions": [0, 1, 2],
         "rules": [
-          { "symbolIds": ["seven", "seven", "seven"], "multiplier": 20.0 },
-          { "symbolIds": ["bell", "bell", "bell"], "multiplier": 10.0 },
-          { "symbolIds": ["bar", "bar", "bar"], "multiplier": 2.5 },
-          { "symbolIds": ["cherry", "cherry", "cherry"], "multiplier": 1.4 }
+          { "symbolIds": ["seven", "seven", "seven"], "multiplier": 60.0 },
+          { "symbolIds": ["bell", "bell", "bell"], "multiplier": 30.0 },
+          { "symbolIds": ["bar", "bar", "bar"], "multiplier": 8.0 },
+          { "symbolIds": ["cherry", "cherry", "cherry"], "multiplier": 4.0 }
         ]
       }
     ]

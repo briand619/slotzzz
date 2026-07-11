@@ -86,7 +86,31 @@ When `rowPositions` is omitted, every position reads row 0 — so single-row
 configurations work unchanged.
 
 See `examples/grid-3x3-slot.json` for a 3×3 game with top, middle, and diagonal
-paylines (theoretical RTP ≈ 92.46%, hit frequency ≈ 24.22%).
+paylines (theoretical RTP ≈ 92.19%, hit frequency ≈ 24.22%).
+
+## Wager Modes
+
+The paytable's `wagerMode` controls what `baseWager` means:
+
+- **`totalBet`** (default): `baseWager` is the total stake per spin. Line wins pay
+  `baseWager × multiplier`, so with several paylines the multipliers must be
+  scaled down by hand or RTP inflates with every line added.
+- **`betPerLine`**: `baseWager` is the bet per payline — the common real-slot
+  convention. The total stake per spin is `baseWager × number of paylines`, and
+  each line pays its multiplier on the line bet, so adding a payline adds both
+  its cost and its wins without distorting RTP.
+
+```json
+"paytable": {
+  "baseWager": 1.0,
+  "wagerMode": "betPerLine",
+  "payLines": [ ... ]
+}
+```
+
+RTP is always total payouts relative to the total stake. The wager mode does not
+change the payout distribution itself (expected value, variance, and hit
+frequency are properties of the wins); it changes what those wins cost.
 
 ## How the Math Works
 

@@ -78,7 +78,7 @@ public class SimulationEngine
         }
 
         decimal meanPayout = totalWon / numSpins;
-        decimal totalWagered = config.Paytable.BaseWager * numSpins;
+        decimal totalWagered = config.Paytable.TotalWager * numSpins;
 
         return new SimulationResult
         {

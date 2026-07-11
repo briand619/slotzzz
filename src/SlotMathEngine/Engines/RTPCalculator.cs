@@ -7,7 +7,7 @@ public class RTPCalculator
     public decimal CalculateRTP(SlotConfiguration config)
     {
         var metrics = TheoreticalAnalyzer.Compute(config);
-        return metrics.ExpectedValue / config.Paytable.BaseWager;
+        return metrics.ExpectedValue / config.Paytable.TotalWager;
     }
 
     public decimal CalculateExpectedValue(SlotConfiguration config)
