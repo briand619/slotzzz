@@ -10,11 +10,14 @@ public record TheoreticalMetrics(decimal ExpectedValue, decimal Variance, decima
 /// This makes expected value, variance, and hit frequency exact — including
 /// correlation between paylines that share reels, duplicate reel positions, and
 /// rules that pay simultaneously — and guarantees consistency with SimulationEngine.
+/// Each reel's own symbol distribution (per-reel strips, or the shared catalog
+/// weights) comes from SlotConfiguration.GetReelDistributions.
 /// </summary>
 public static class TheoreticalAnalyzer
 {
-    // symbols^referencedReels outcomes are enumerated; beyond this the exact
-    // computation is too expensive and callers should rely on simulation.
+    // The product of distinct-symbol counts across referenced reels is enumerated;
+    // beyond this the exact computation is too expensive and callers should rely
+    // on simulation.
     public const long MaxOutcomes = 10_000_000;
 
     public static TheoreticalMetrics Compute(SlotConfiguration config)
@@ -26,14 +29,16 @@ public static class TheoreticalAnalyzer
             .Distinct()
             .ToArray();
 
-        var symbols = config.Symbols;
-        double outcomeCount = Math.Pow(symbols.Count, referencedReels.Length);
+        var distributions = config.GetReelDistributions();
+
+        double outcomeCount = 1;
+        foreach (var reel in referencedReels)
+            outcomeCount *= distributions[reel].Count;
         if (outcomeCount > MaxOutcomes)
             throw new ArgumentException(
-                $"Configuration has {symbols.Count}^{referencedReels.Length} possible outcomes, " +
-                $"which exceeds the exact-analysis limit of {MaxOutcomes}. Use simulation instead.");
+                $"Configuration has more than {MaxOutcomes} possible outcomes " +
+                "across the reels referenced by the paytable. Use simulation instead.");
 
-        decimal totalWeight = symbols.Sum(s => s.Weight);
         var reelSymbols = new string[config.NumReels];
 
         decimal expectedValue = 0;
@@ -48,9 +53,9 @@ public static class TheoreticalAnalyzer
             decimal probability = 1;
             for (int k = 0; k < reelCount; k++)
             {
-                var symbol = symbols[symbolIndex[k]];
-                reelSymbols[referencedReels[k]] = symbol.Id;
-                probability *= symbol.Weight / totalWeight;
+                var entry = distributions[referencedReels[k]][symbolIndex[k]];
+                reelSymbols[referencedReels[k]] = entry.SymbolId;
+                probability *= entry.Probability;
             }
 
             decimal payout = PayoutEvaluator.EvaluatePayout(config, reelSymbols);
@@ -60,7 +65,7 @@ public static class TheoreticalAnalyzer
                 hitProbability += probability;
 
             int pos = reelCount - 1;
-            while (pos >= 0 && ++symbolIndex[pos] == symbols.Count)
+            while (pos >= 0 && ++symbolIndex[pos] == distributions[referencedReels[pos]].Count)
             {
                 symbolIndex[pos] = 0;
                 pos--;

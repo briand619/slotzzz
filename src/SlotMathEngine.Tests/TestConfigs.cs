@@ -43,6 +43,30 @@ public static class TestConfigs
     }
 
     /// <summary>
+    /// Per-reel strips: reel 0 shows only "a"; reel 1 shows "a" or "b" with equal
+    /// probability. One payline [0,1] with rule aa→2x.
+    /// Exact: EV = 1·0.5·2 = 1.0, hit = 0.5, Var = 0.5·4 − 1² = 1.0.
+    /// </summary>
+    public static SlotConfiguration CreatePerReelConfig()
+    {
+        var config = new SlotConfiguration("Per Reel Slot", 2);
+        config.Symbols.Add(new Symbol("a", "Symbol A", 1m));
+        config.Symbols.Add(new Symbol("b", "Symbol B", 1m));
+
+        config.Reels = new List<ReelStrip>
+        {
+            new(new[] { new ReelStop("a", 1m) }),
+            new(new[] { new ReelStop("a", 1m), new ReelStop("b", 1m) })
+        };
+
+        var payLine = new PayLine(0, new List<int> { 0, 1 });
+        payLine.Rules.Add(new PayLineRule(new List<string> { "a", "a" }, 2m));
+        config.Paytable.PayLines.Add(payLine);
+
+        return config;
+    }
+
+    /// <summary>
     /// Two equal-weight symbols, two overlapping single-position paylines:
     /// line 0 pays 2x when reel 0 shows "a"; line 1 pays 2x when reel 1 shows "a".
     /// True hit frequency is P(at least one) = 0.75, not 0.5 + 0.5.

@@ -26,6 +26,41 @@ src/
     └── Services/             # ISlotAnalysisService, SlotAnalysisService
 ```
 
+## Per-Reel Symbol Strips
+
+Real slot machines give each reel its own weighted strip — that is how designers
+tune volatility and near-misses (for example, making the jackpot symbol rarer on
+the last reel). Add an optional `reels` array with one strip per reel:
+
+```json
+{
+  "name": "My Slot",
+  "numReels": 3,
+  "symbols": [
+    { "id": "cherry", "name": "Cherry" },
+    { "id": "seven", "name": "Seven" }
+  ],
+  "reels": [
+    { "stops": [ { "symbolId": "cherry", "weight": 5 }, { "symbolId": "seven", "weight": 2 } ] },
+    { "stops": [ { "symbolId": "cherry", "weight": 5 }, { "symbolId": "seven", "weight": 2 } ] },
+    { "stops": [ { "symbolId": "cherry", "weight": 6 }, { "symbolId": "seven", "weight": 1 } ] }
+  ],
+  "paytable": { ... }
+}
+```
+
+Rules:
+- When `reels` is provided it must contain exactly `numReels` strips, and every
+  strip stop must reference a symbol from the `symbols` catalog with a positive
+  weight. The catalog's own `weight` values are then unused and may be omitted.
+- When `reels` is omitted, every reel uses the shared `symbols` weights
+  (the original behavior — existing configurations work unchanged).
+- The same symbol may appear on multiple stops of one strip; its probability on
+  that reel is the sum of its stop weights over the strip's total weight.
+
+See `examples/per-reel-strips-slot.json` for a complete example
+(theoretical RTP ≈ 90.16%, hit frequency ≈ 19.27%).
+
 ## How the Math Works
 
 All theoretical metrics come from `TheoreticalAnalyzer`, which enumerates every
@@ -150,9 +185,10 @@ See `examples/simple-3reel-slot.json` for a complete example configuration
 
 ### Models
 - **Symbol**: Represents a reel symbol with weighted probability
+- **ReelStrip / ReelStop**: A single reel's own weighted symbol strip
 - **PayLine**: Defines a winning line configuration
 - **Paytable**: Collection of paylines and base wager
-- **SlotConfiguration**: Complete slot machine configuration
+- **SlotConfiguration**: Complete slot machine configuration; `GetReelDistributions()` is the single source of truth for each reel's symbol probabilities
 
 ### Calculation Engines
 - **PayoutEvaluator**: Single source of truth for what a reel outcome pays; used by both theory and simulation
