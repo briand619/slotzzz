@@ -3,13 +3,14 @@ namespace SlotMathEngine.Engines;
 using SlotMathEngine.Models;
 
 /// <summary>
-/// Single source of truth for what a given reel outcome pays. Both the exact
+/// Single source of truth for what a given grid outcome pays. Both the exact
 /// theoretical analysis and the Monte Carlo simulation evaluate outcomes through
 /// this class, so the two can never disagree about the game rules.
+/// The grid is indexed as grid[reel][row].
 /// </summary>
 public static class PayoutEvaluator
 {
-    public static decimal EvaluatePayout(SlotConfiguration config, IReadOnlyList<string> reelSymbols)
+    public static decimal EvaluatePayout(SlotConfiguration config, string[][] grid)
     {
         decimal totalPayout = 0;
 
@@ -17,7 +18,7 @@ public static class PayoutEvaluator
         {
             foreach (var rule in payLine.Rules)
             {
-                if (RuleMatches(payLine, rule, reelSymbols))
+                if (RuleMatches(payLine, rule, grid))
                     totalPayout += config.Paytable.BaseWager * rule.Multiplier;
             }
         }
@@ -25,7 +26,7 @@ public static class PayoutEvaluator
         return totalPayout;
     }
 
-    public static bool RuleMatches(PayLine payLine, PayLineRule rule, IReadOnlyList<string> reelSymbols)
+    public static bool RuleMatches(PayLine payLine, PayLineRule rule, string[][] grid)
     {
         if (rule.SymbolIds.Count != payLine.ReelPositions.Count)
             return false;
@@ -33,10 +34,14 @@ public static class PayoutEvaluator
         for (int i = 0; i < rule.SymbolIds.Count; i++)
         {
             int reelIndex = payLine.ReelPositions[i];
-            if (reelIndex < 0 || reelIndex >= reelSymbols.Count)
+            if (reelIndex < 0 || reelIndex >= grid.Length)
                 return false;
 
-            if (reelSymbols[reelIndex] != rule.SymbolIds[i])
+            int rowIndex = payLine.RowAt(i);
+            if (rowIndex < 0 || rowIndex >= grid[reelIndex].Length)
+                return false;
+
+            if (grid[reelIndex][rowIndex] != rule.SymbolIds[i])
                 return false;
         }
 

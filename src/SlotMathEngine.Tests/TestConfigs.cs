@@ -67,6 +67,45 @@ public static class TestConfigs
     }
 
     /// <summary>
+    /// A 3×3 grid: three reels with 8-stop ordered strips, three paylines
+    /// (top row, middle row, and a down diagonal), triple-match rules.
+    /// </summary>
+    public static SlotConfiguration Create3x3GridConfig()
+    {
+        var config = new SlotConfiguration("3x3 Grid Slot", 3) { NumRows = 3 };
+        config.Symbols.Add(new Symbol("cherry", "Cherry", 1m));
+        config.Symbols.Add(new Symbol("bar", "Bar", 1m));
+        config.Symbols.Add(new Symbol("bell", "Bell", 1m));
+        config.Symbols.Add(new Symbol("seven", "Seven", 1m));
+
+        static ReelStrip Strip(params string[] ids) =>
+            new(ids.Select(id => new ReelStop(id, 1m)));
+
+        config.Reels = new List<ReelStrip>
+        {
+            Strip("cherry", "bar", "cherry", "bell", "cherry", "bar", "seven", "bell"),
+            Strip("bar", "cherry", "bell", "cherry", "seven", "bar", "cherry", "bell"),
+            Strip("cherry", "bell", "bar", "cherry", "bar", "cherry", "bell", "seven")
+        };
+
+        static PayLine Line(int id, List<int> rows)
+        {
+            var line = new PayLine(id, new List<int> { 0, 1, 2 }) { RowPositions = rows };
+            line.Rules.Add(new PayLineRule(new List<string> { "seven", "seven", "seven" }, 60m));
+            line.Rules.Add(new PayLineRule(new List<string> { "bell", "bell", "bell" }, 30m));
+            line.Rules.Add(new PayLineRule(new List<string> { "bar", "bar", "bar" }, 8m));
+            line.Rules.Add(new PayLineRule(new List<string> { "cherry", "cherry", "cherry" }, 4m));
+            return line;
+        }
+
+        config.Paytable.PayLines.Add(Line(0, new List<int> { 0, 0, 0 }));
+        config.Paytable.PayLines.Add(Line(1, new List<int> { 1, 1, 1 }));
+        config.Paytable.PayLines.Add(Line(2, new List<int> { 0, 1, 2 }));
+
+        return config;
+    }
+
+    /// <summary>
     /// Two equal-weight symbols, two overlapping single-position paylines:
     /// line 0 pays 2x when reel 0 shows "a"; line 1 pays 2x when reel 1 shows "a".
     /// True hit frequency is P(at least one) = 0.75, not 0.5 + 0.5.

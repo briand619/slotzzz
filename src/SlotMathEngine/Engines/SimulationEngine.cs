@@ -26,26 +26,25 @@ public class SimulationEngine
         if (numSpins < 1)
             throw new ArgumentException("Number of spins must be at least 1", nameof(numSpins));
 
-        var distributions = config.GetReelDistributions();
+        var strips = config.GetEffectiveStrips();
 
-        // Per-reel cumulative probability tables for weighted drawing.
-        var symbolTables = new string[config.NumReels][];
+        // Per-reel cumulative weight tables for drawing a weighted stop position.
         var cumulativeTables = new decimal[config.NumReels][];
         for (int reel = 0; reel < config.NumReels; reel++)
         {
-            var distribution = distributions[reel];
-            symbolTables[reel] = new string[distribution.Count];
-            cumulativeTables[reel] = new decimal[distribution.Count];
+            var strip = strips[reel];
+            cumulativeTables[reel] = new decimal[strip.Count];
             decimal cumulative = 0;
-            for (int i = 0; i < distribution.Count; i++)
+            for (int i = 0; i < strip.Count; i++)
             {
-                symbolTables[reel][i] = distribution[i].SymbolId;
-                cumulative += distribution[i].Probability;
+                cumulative += strip[i].Weight;
                 cumulativeTables[reel][i] = cumulative;
             }
         }
 
-        var reelSymbols = new string[config.NumReels];
+        var grid = new string[config.NumReels][];
+        for (int reel = 0; reel < config.NumReels; reel++)
+            grid[reel] = new string[config.NumRows];
 
         decimal totalWon = 0;
         decimal sumOfSquares = 0;
@@ -56,9 +55,14 @@ public class SimulationEngine
         for (int spin = 0; spin < numSpins; spin++)
         {
             for (int reel = 0; reel < config.NumReels; reel++)
-                reelSymbols[reel] = DrawSymbol(symbolTables[reel], cumulativeTables[reel]);
+            {
+                var strip = strips[reel];
+                int stop = DrawStopIndex(cumulativeTables[reel]);
+                for (int row = 0; row < config.NumRows; row++)
+                    grid[reel][row] = strip[(stop + row) % strip.Count].SymbolId;
+            }
 
-            decimal payout = PayoutEvaluator.EvaluatePayout(config, reelSymbols);
+            decimal payout = PayoutEvaluator.EvaluatePayout(config, grid);
 
             totalWon += payout;
             sumOfSquares += payout * payout;
@@ -90,16 +94,16 @@ public class SimulationEngine
         };
     }
 
-    private string DrawSymbol(string[] symbols, decimal[] cumulativeProbabilities)
+    private int DrawStopIndex(decimal[] cumulativeWeights)
     {
-        decimal randomValue = (decimal)_random.NextDouble();
+        decimal randomValue = (decimal)_random.NextDouble() * cumulativeWeights[^1];
 
-        for (int i = 0; i < cumulativeProbabilities.Length; i++)
+        for (int i = 0; i < cumulativeWeights.Length; i++)
         {
-            if (randomValue <= cumulativeProbabilities[i])
-                return symbols[i];
+            if (randomValue <= cumulativeWeights[i])
+                return i;
         }
 
-        return symbols[^1];
+        return cumulativeWeights.Length - 1;
     }
 }

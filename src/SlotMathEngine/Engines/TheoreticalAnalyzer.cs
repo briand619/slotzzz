@@ -5,19 +5,19 @@ using SlotMathEngine.Models;
 public record TheoreticalMetrics(decimal ExpectedValue, decimal Variance, decimal HitFrequency);
 
 /// <summary>
-/// Computes exact theoretical metrics by enumerating every possible outcome of the
-/// reels referenced by the paytable and evaluating each through PayoutEvaluator.
-/// This makes expected value, variance, and hit frequency exact — including
-/// correlation between paylines that share reels, duplicate reel positions, and
-/// rules that pay simultaneously — and guarantees consistency with SimulationEngine.
-/// Each reel's own symbol distribution (per-reel strips, or the shared catalog
-/// weights) comes from SlotConfiguration.GetReelDistributions.
+/// Computes exact theoretical metrics by enumerating every possible stop position
+/// of the reels referenced by the paytable, deriving each reel's visible window
+/// (stop + following NumRows−1 stops, wrapping), and evaluating the resulting grid
+/// through PayoutEvaluator. This makes expected value, variance, and hit frequency
+/// exact — including correlation between paylines that share reels, correlation
+/// between rows of the same reel, duplicate positions, and rules that pay
+/// simultaneously — and guarantees consistency with SimulationEngine.
 /// </summary>
 public static class TheoreticalAnalyzer
 {
-    // The product of distinct-symbol counts across referenced reels is enumerated;
-    // beyond this the exact computation is too expensive and callers should rely
-    // on simulation.
+    // The product of strip lengths across referenced reels is enumerated; beyond
+    // this the exact computation is too expensive and callers should rely on
+    // simulation.
     public const long MaxOutcomes = 10_000_000;
 
     public static TheoreticalMetrics Compute(SlotConfiguration config)
@@ -29,45 +29,53 @@ public static class TheoreticalAnalyzer
             .Distinct()
             .ToArray();
 
-        var distributions = config.GetReelDistributions();
+        var strips = config.GetEffectiveStrips();
 
         double outcomeCount = 1;
         foreach (var reel in referencedReels)
-            outcomeCount *= distributions[reel].Count;
+            outcomeCount *= strips[reel].Count;
         if (outcomeCount > MaxOutcomes)
             throw new ArgumentException(
                 $"Configuration has more than {MaxOutcomes} possible outcomes " +
                 "across the reels referenced by the paytable. Use simulation instead.");
 
-        var reelSymbols = new string[config.NumReels];
+        var totalWeights = strips.Select(strip => strip.Sum(st => st.Weight)).ToArray();
+
+        var grid = new string[config.NumReels][];
+        for (int reel = 0; reel < config.NumReels; reel++)
+            grid[reel] = new string[config.NumRows];
 
         decimal expectedValue = 0;
         decimal expectedSquare = 0;
         decimal hitProbability = 0;
 
         int reelCount = referencedReels.Length;
-        var symbolIndex = new int[reelCount];
+        var stopIndex = new int[reelCount];
 
         while (true)
         {
             decimal probability = 1;
             for (int k = 0; k < reelCount; k++)
             {
-                var entry = distributions[referencedReels[k]][symbolIndex[k]];
-                reelSymbols[referencedReels[k]] = entry.SymbolId;
-                probability *= entry.Probability;
+                int reel = referencedReels[k];
+                var strip = strips[reel];
+                var stop = strip[stopIndex[k]];
+                probability *= stop.Weight / totalWeights[reel];
+
+                for (int row = 0; row < config.NumRows; row++)
+                    grid[reel][row] = strip[(stopIndex[k] + row) % strip.Count].SymbolId;
             }
 
-            decimal payout = PayoutEvaluator.EvaluatePayout(config, reelSymbols);
+            decimal payout = PayoutEvaluator.EvaluatePayout(config, grid);
             expectedValue += probability * payout;
             expectedSquare += probability * payout * payout;
             if (payout > 0)
                 hitProbability += probability;
 
             int pos = reelCount - 1;
-            while (pos >= 0 && ++symbolIndex[pos] == distributions[referencedReels[pos]].Count)
+            while (pos >= 0 && ++stopIndex[pos] == strips[referencedReels[pos]].Count)
             {
-                symbolIndex[pos] = 0;
+                stopIndex[pos] = 0;
                 pos--;
             }
             if (pos < 0)
