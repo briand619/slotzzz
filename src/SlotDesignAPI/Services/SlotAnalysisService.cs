@@ -76,7 +76,10 @@ public class SlotAnalysisService : ISlotAnalysisService
         if (request == null)
             throw new ArgumentException("Configuration cannot be null");
 
-        var config = new SlotConfiguration(request.Name ?? string.Empty, request.NumReels);
+        var config = new SlotConfiguration(request.Name ?? string.Empty, request.NumReels)
+        {
+            NumRows = request.NumRows
+        };
 
         if (request.Symbols != null)
         {
@@ -106,7 +109,10 @@ public class SlotAnalysisService : ISlotAnalysisService
             {
                 foreach (var payLineDto in request.Paytable.PayLines)
                 {
-                    var payLine = new PayLine(payLineDto.Id, payLineDto.ReelPositions ?? new List<int>());
+                    var payLine = new PayLine(payLineDto.Id, payLineDto.ReelPositions ?? new List<int>())
+                    {
+                        RowPositions = payLineDto.RowPositions
+                    };
 
                     if (payLineDto.Rules != null)
                     {

@@ -1,0 +1,87 @@
+{
+  "name": "3x3 Grid Slot (top, middle, and diagonal paylines)",
+  "numReels": 3,
+  "numRows": 3,
+  "symbols": [
+    { "id": "cherry", "name": "Cherry" },
+    { "id": "bar", "name": "Bar" },
+    { "id": "bell", "name": "Bell" },
+    { "id": "seven", "name": "Seven" }
+  ],
+  "reels": [
+    {
+      "stops": [
+        { "symbolId": "cherry", "weight": 1.0 },
+        { "symbolId": "bar", "weight": 1.0 },
+        { "symbolId": "cherry", "weight": 1.0 },
+        { "symbolId": "bell", "weight": 1.0 },
+        { "symbolId": "cherry", "weight": 1.0 },
+        { "symbolId": "bar", "weight": 1.0 },
+        { "symbolId": "seven", "weight": 1.0 },
+        { "symbolId": "bell", "weight": 1.0 }
+      ]
+    },
+    {
+      "stops": [
+        { "symbolId": "bar", "weight": 1.0 },
+        { "symbolId": "cherry", "weight": 1.0 },
+        { "symbolId": "bell", "weight": 1.0 },
+        { "symbolId": "cherry", "weight": 1.0 },
+        { "symbolId": "seven", "weight": 1.0 },
+        { "symbolId": "bar", "weight": 1.0 },
+        { "symbolId": "cherry", "weight": 1.0 },
+        { "symbolId": "bell", "weight": 1.0 }
+      ]
+    },
+    {
+      "stops": [
+        { "symbolId": "cherry", "weight": 1.0 },
+        { "symbolId": "bell", "weight": 1.0 },
+        { "symbolId": "bar", "weight": 1.0 },
+        { "symbolId": "cherry", "weight": 1.0 },
+        { "symbolId": "bar", "weight": 1.0 },
+        { "symbolId": "cherry", "weight": 1.0 },
+        { "symbolId": "bell", "weight": 1.0 },
+        { "symbolId": "seven", "weight": 1.0 }
+      ]
+    }
+  ],
+  "paytable": {
+    "baseWager": 1.0,
+    "payLines": [
+      {
+        "id": 0,
+        "reelPositions": [0, 1, 2],
+        "rowPositions": [0, 0, 0],
+        "rules": [
+          { "symbolIds": ["seven", "seven", "seven"], "multiplier": 20.0 },
+          { "symbolIds": ["bell", "bell", "bell"], "multiplier": 10.0 },
+          { "symbolIds": ["bar", "bar", "bar"], "multiplier": 2.5 },
+          { "symbolIds": ["cherry", "cherry", "cherry"], "multiplier": 1.4 }
+        ]
+      },
+      {
+        "id": 1,
+        "reelPositions": [0, 1, 2],
+        "rowPositions": [1, 1, 1],
+        "rules": [
+          { "symbolIds": ["seven", "seven", "seven"], "multiplier": 20.0 },
+          { "symbolIds": ["bell", "bell", "bell"], "multiplier": 10.0 },
+          { "symbolIds": ["bar", "bar", "bar"], "multiplier": 2.5 },
+          { "symbolIds": ["cherry", "cherry", "cherry"], "multiplier": 1.4 }
+        ]
+      },
+      {
+        "id": 2,
+        "reelPositions": [0, 1, 2],
+        "rowPositions": [0, 1, 2],
+        "rules": [
+          { "symbolIds": ["seven", "seven", "seven"], "multiplier": 20.0 },
+          { "symbolIds": ["bell", "bell", "bell"], "multiplier": 10.0 },
+          { "symbolIds": ["bar", "bar", "bar"], "multiplier": 2.5 },
+          { "symbolIds": ["cherry", "cherry", "cherry"], "multiplier": 1.4 }
+        ]
+      }
+    ]
+  }
+}

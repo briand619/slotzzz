@@ -61,6 +61,33 @@ Rules:
 See `examples/per-reel-strips-slot.json` for a complete example
 (theoretical RTP ≈ 90.16%, hit frequency ≈ 19.27%).
 
+## Multi-Row Grids
+
+Set `numRows` above 1 to model video-slot grids (e.g. 5×3). A spin stops each
+reel on a strip position; the visible window is that stop plus the following
+`numRows − 1` stops (wrapping around the strip) — so rows on the same reel are
+**correlated exactly like a physical reel**, not independent draws. Because strip
+order determines the windows, multi-row games require explicit `reels` strips,
+each at least `numRows` stops long.
+
+Paylines gain an optional `rowPositions` array (parallel to `reelPositions`) to
+trace any path through the grid — straight lines, diagonals, zigzags:
+
+```json
+{
+  "id": 2,
+  "reelPositions": [0, 1, 2],
+  "rowPositions": [0, 1, 2],
+  "rules": [ { "symbolIds": ["seven", "seven", "seven"], "multiplier": 60.0 } ]
+}
+```
+
+When `rowPositions` is omitted, every position reads row 0 — so single-row
+configurations work unchanged.
+
+See `examples/grid-3x3-slot.json` for a 3×3 game with top, middle, and diagonal
+paylines (theoretical RTP ≈ 92.46%, hit frequency ≈ 24.22%).
+
 ## How the Math Works
 
 All theoretical metrics come from `TheoreticalAnalyzer`, which enumerates every
