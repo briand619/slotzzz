@@ -12,122 +12,84 @@ public class SimulationResult
     public int TotalSpins { get; set; }
     public int WinningSpins { get; set; }
     public decimal ActualRTP { get; set; }
-    public List<decimal> SpinResults { get; set; } = new();
+    public decimal ActualVariance { get; set; }
 }
 
 public class SimulationEngine
 {
-    private readonly Random _random = new(Guid.NewGuid().GetHashCode());
+    private readonly Random _random = new();
 
     public SimulationResult RunSimulation(SlotConfiguration config, int numSpins = 100000)
     {
-        if (!config.Validate())
-            throw new ArgumentException("Invalid slot configuration");
+        config.EnsureValid();
 
-        var result = new SimulationResult
+        if (numSpins < 1)
+            throw new ArgumentException("Number of spins must be at least 1", nameof(numSpins));
+
+        var symbols = config.Symbols;
+        var cumulativeWeights = new decimal[symbols.Count];
+        decimal totalWeight = 0;
+        for (int i = 0; i < symbols.Count; i++)
         {
-            TotalSpins = numSpins,
-            SpinResults = new List<decimal>(numSpins),
-            MinWin = decimal.MaxValue,
-            MaxWin = 0,
-            TotalWagered = 0
-        };
+            totalWeight += symbols[i].Weight;
+            cumulativeWeights[i] = totalWeight;
+        }
+
+        var reelSymbols = new string[config.NumReels];
 
         decimal totalWon = 0;
+        decimal sumOfSquares = 0;
         int winningSpins = 0;
+        decimal minWin = 0;
+        decimal maxWin = 0;
 
-        for (int i = 0; i < numSpins; i++)
+        for (int spin = 0; spin < numSpins; spin++)
         {
-            decimal spinWin = SimulateSpinAndEvaluate(config);
-            result.SpinResults.Add(spinWin);
+            for (int reel = 0; reel < config.NumReels; reel++)
+                reelSymbols[reel] = DrawSymbol(symbols, cumulativeWeights, totalWeight);
 
-            totalWon += spinWin;
-            result.TotalWagered += config.Paytable.BaseWager;
+            decimal payout = PayoutEvaluator.EvaluatePayout(config, reelSymbols);
 
-            if (spinWin > 0)
+            totalWon += payout;
+            sumOfSquares += payout * payout;
+
+            if (payout > 0)
             {
+                if (winningSpins == 0 || payout < minWin)
+                    minWin = payout;
+                if (payout > maxWin)
+                    maxWin = payout;
                 winningSpins++;
-                if (spinWin < result.MinWin)
-                    result.MinWin = spinWin;
-                if (spinWin > result.MaxWin)
-                    result.MaxWin = spinWin;
             }
         }
 
-        result.TotalWon = totalWon;
-        result.WinningSpins = winningSpins;
-        result.AverageWin = winningSpins > 0 ? totalWon / winningSpins : 0;
-        result.ActualRTP = result.TotalWagered > 0 ? result.TotalWon / result.TotalWagered : 0;
+        decimal meanPayout = totalWon / numSpins;
+        decimal totalWagered = config.Paytable.BaseWager * numSpins;
 
-        if (result.MinWin == decimal.MaxValue)
-            result.MinWin = 0;
-
-        return result;
-    }
-
-    private decimal SimulateSpinAndEvaluate(SlotConfiguration config)
-    {
-        var reelResults = new List<string>();
-
-        for (int reel = 0; reel < config.NumReels; reel++)
+        return new SimulationResult
         {
-            string symbol = SpinReel(config.Symbols);
-            reelResults.Add(symbol);
-        }
-
-        decimal totalPayout = EvaluatePayLines(config, reelResults);
-        return totalPayout;
+            TotalSpins = numSpins,
+            TotalWagered = totalWagered,
+            TotalWon = totalWon,
+            WinningSpins = winningSpins,
+            AverageWin = winningSpins > 0 ? totalWon / winningSpins : 0,
+            MinWin = minWin,
+            MaxWin = maxWin,
+            ActualRTP = totalWon / totalWagered,
+            ActualVariance = sumOfSquares / numSpins - meanPayout * meanPayout
+        };
     }
 
-    private string SpinReel(List<Symbol> symbols)
+    private string DrawSymbol(List<Symbol> symbols, decimal[] cumulativeWeights, decimal totalWeight)
     {
-        decimal totalWeight = symbols.Sum(s => s.Weight);
         decimal randomValue = (decimal)_random.NextDouble() * totalWeight;
 
-        decimal cumulativeWeight = 0;
-        foreach (var symbol in symbols)
+        for (int i = 0; i < cumulativeWeights.Length; i++)
         {
-            cumulativeWeight += symbol.Weight;
-            if (randomValue <= cumulativeWeight)
-                return symbol.Id;
+            if (randomValue <= cumulativeWeights[i])
+                return symbols[i].Id;
         }
 
-        return symbols.Last().Id;
-    }
-
-    private decimal EvaluatePayLines(SlotConfiguration config, List<string> reelResults)
-    {
-        decimal totalPayout = 0;
-
-        foreach (var payLine in config.Paytable.PayLines)
-        {
-            foreach (var rule in payLine.Rules)
-            {
-                if (IsPayLineMatch(reelResults, payLine, rule.SymbolIds))
-                {
-                    totalPayout += config.Paytable.BaseWager * rule.Multiplier;
-                }
-            }
-        }
-
-        return totalPayout;
-    }
-
-    private bool IsPayLineMatch(List<string> reelResults, PayLine payLine, List<string> symbolIds)
-    {
-        if (symbolIds.Count != payLine.ReelPositions.Count)
-            return false;
-
-        for (int i = 0; i < symbolIds.Count; i++)
-        {
-            int reelIndex = payLine.ReelPositions[i];
-            if (reelIndex >= reelResults.Count)
-                return false;
-
-            if (reelResults[reelIndex] != symbolIds[i])
-                return false;
-        }
-
-        return true;
+        return symbols[^1].Id;
     }
 }

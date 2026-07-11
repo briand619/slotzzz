@@ -1,4 +1,4 @@
-@baseUrl = http://localhost:5000
+@baseUrl = http://localhost:5164
 
 ### Calculate RTP for Simple Slot
 POST {{baseUrl}}/api/analysis/rtp
@@ -39,19 +39,19 @@ Content-Type: application/json
           "rules": [
             {
               "symbolIds": ["seven", "seven", "seven"],
-              "multiplier": 100.0
+              "multiplier": 60.0
             },
             {
               "symbolIds": ["bell", "bell", "bell"],
-              "multiplier": 50.0
+              "multiplier": 30.0
             },
             {
               "symbolIds": ["bar", "bar", "bar"],
-              "multiplier": 10.0
+              "multiplier": 8.0
             },
             {
               "symbolIds": ["cherry", "cherry", "cherry"],
-              "multiplier": 5.0
+              "multiplier": 4.0
             }
           ]
         }
@@ -99,19 +99,19 @@ Content-Type: application/json
           "rules": [
             {
               "symbolIds": ["seven", "seven", "seven"],
-              "multiplier": 100.0
+              "multiplier": 60.0
             },
             {
               "symbolIds": ["bell", "bell", "bell"],
-              "multiplier": 50.0
+              "multiplier": 30.0
             },
             {
               "symbolIds": ["bar", "bar", "bar"],
-              "multiplier": 10.0
+              "multiplier": 8.0
             },
             {
               "symbolIds": ["cherry", "cherry", "cherry"],
-              "multiplier": 5.0
+              "multiplier": 4.0
             }
           ]
         }
@@ -159,19 +159,19 @@ Content-Type: application/json
           "rules": [
             {
               "symbolIds": ["seven", "seven", "seven"],
-              "multiplier": 100.0
+              "multiplier": 60.0
             },
             {
               "symbolIds": ["bell", "bell", "bell"],
-              "multiplier": 50.0
+              "multiplier": 30.0
             },
             {
               "symbolIds": ["bar", "bar", "bar"],
-              "multiplier": 10.0
+              "multiplier": 8.0
             },
             {
               "symbolIds": ["cherry", "cherry", "cherry"],
-              "multiplier": 5.0
+              "multiplier": 4.0
             }
           ]
         }
@@ -220,19 +220,19 @@ Content-Type: application/json
           "rules": [
             {
               "symbolIds": ["seven", "seven", "seven"],
-              "multiplier": 100.0
+              "multiplier": 60.0
             },
             {
               "symbolIds": ["bell", "bell", "bell"],
-              "multiplier": 50.0
+              "multiplier": 30.0
             },
             {
               "symbolIds": ["bar", "bar", "bar"],
-              "multiplier": 10.0
+              "multiplier": 8.0
             },
             {
               "symbolIds": ["cherry", "cherry", "cherry"],
-              "multiplier": 5.0
+              "multiplier": 4.0
             }
           ]
         }

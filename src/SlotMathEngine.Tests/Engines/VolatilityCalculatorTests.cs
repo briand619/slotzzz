@@ -5,21 +5,6 @@ using SlotMathEngine.Models;
 
 public class VolatilityCalculatorTests
 {
-    private SlotConfiguration CreateSimpleConfig()
-    {
-        var config = new SlotConfiguration("Simple Slot", 3);
-        config.Symbols.Add(new Symbol("a", "Symbol A", 1m));
-        config.Symbols.Add(new Symbol("b", "Symbol B", 1m));
-        config.Symbols.Add(new Symbol("c", "Symbol C", 1m));
-
-        var payLine = new PayLine(0, new List<int> { 0, 1, 2 });
-        payLine.Rules.Add(new PayLineRule(new List<string> { "a", "a", "a" }, 10m));
-        payLine.Rules.Add(new PayLineRule(new List<string> { "b", "b", "b" }, 5m));
-        config.Paytable.PayLines.Add(payLine);
-
-        return config;
-    }
-
     [Fact]
     public void CalculateVariance_ShouldThrowOnInvalidConfig()
     {
@@ -32,7 +17,7 @@ public class VolatilityCalculatorTests
     [Fact]
     public void CalculateVariance_ShouldReturnNonNegativeValue()
     {
-        var config = CreateSimpleConfig();
+        var config = TestConfigs.CreateSimpleConfig();
         var calculator = new VolatilityCalculator();
 
         var variance = calculator.CalculateVariance(config);
@@ -41,31 +26,40 @@ public class VolatilityCalculatorTests
     }
 
     [Fact]
-    public void CalculateVolatility_ShouldReturnNonNegativeValue()
+    public void CalculateVariance_SinglePayline_MatchesExactDistribution()
     {
-        var config = CreateSimpleConfig();
+        // One payline, rules aaa→10 (p=1/27) and bbb→5 (p=1/27), else 0.
+        // E[X] = 15/27, E[X²] = 125/27, Var = E[X²] − E[X]².
+        var config = TestConfigs.CreateSimpleConfig();
         var calculator = new VolatilityCalculator();
 
-        var volatility = calculator.CalculateVolatility(config);
+        var variance = calculator.CalculateVariance(config);
 
-        Assert.True(volatility >= 0);
+        decimal p = (1m / 3m) * (1m / 3m) * (1m / 3m);
+        decimal mean = p * 10m + p * 5m;
+        decimal expectedVariance = p * 100m + p * 25m - mean * mean;
+
+        Assert.Equal(expectedVariance, variance, 10);
     }
 
     [Fact]
-    public void CalculateVolatilityIndex_ShouldReturnNonNegativeValue()
+    public void CalculateVariance_MultiplePaylines_AccountsForCorrelation()
     {
-        var config = CreateSimpleConfig();
+        // Two paylines over the same reels: aaa→10 and bbb→10, p=0.5 per symbol.
+        // Total win is 10 w.p. 1/4, else 0: Var = 25 − 2.5² = 18.75.
+        // Summing per-payline variances (the old, wrong formula) gives 25.0.
+        var config = TestConfigs.CreateTwoLineConfig();
         var calculator = new VolatilityCalculator();
 
-        var index = calculator.CalculateVolatilityIndex(config);
+        var variance = calculator.CalculateVariance(config);
 
-        Assert.True(index >= 0);
+        Assert.Equal(18.75m, variance);
     }
 
     [Fact]
     public void CalculateVolatility_ShouldBeSquareRootOfVariance()
     {
-        var config = CreateSimpleConfig();
+        var config = TestConfigs.CreateSimpleConfig();
         var calculator = new VolatilityCalculator();
 
         var variance = calculator.CalculateVariance(config);
@@ -73,5 +67,16 @@ public class VolatilityCalculatorTests
         var expectedVolatility = (decimal)Math.Sqrt((double)variance);
 
         Assert.Equal(expectedVolatility, volatility, 10);
+    }
+
+    [Fact]
+    public void CalculateVolatilityIndex_ShouldReturnNonNegativeValue()
+    {
+        var config = TestConfigs.CreateSimpleConfig();
+        var calculator = new VolatilityCalculator();
+
+        var index = calculator.CalculateVolatilityIndex(config);
+
+        Assert.True(index >= 0);
     }
 }

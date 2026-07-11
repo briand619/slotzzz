@@ -4,12 +4,12 @@ A .NET-based tool for analyzing and simulating slot machine configurations. This
 
 ## Features
 
-- **RTP Calculation**: Calculate theoretical Return to Player percentage based on paytable configuration
-- **Volatility Analysis**: Measure variance and volatility index of slot configurations
-- **Hit Frequency**: Calculate the probability of winning on any given spin
-- **Simulation Engine**: Run large-scale simulations (10K-1M spins) to validate theoretical calculations
-- **Web API**: RESTful endpoints for all analysis features
-- **Comprehensive Testing**: 24+ unit tests validating all calculations
+- **Exact RTP Calculation**: Theoretical Return to Player computed by exact enumeration of all reel outcomes (not an approximation)
+- **Exact Volatility Analysis**: Variance and volatility index of the total spin win, correctly accounting for correlation between paylines that share reels
+- **Exact Hit Frequency**: True probability of at least one win per spin (union probability, not a sum of per-line probabilities)
+- **Simulation Engine**: Monte Carlo runs (up to 1M spins via the API) that share the same payout-evaluation code as the theoretical engine, so theory and simulation can never model different games
+- **Web API**: RESTful endpoints for all analysis features with input validation (400 with error details for invalid configurations)
+- **Comprehensive Testing**: 41 unit tests, including exact-value regression tests for multi-payline variance and hit frequency
 
 ## Architecture
 
@@ -17,12 +17,24 @@ A .NET-based tool for analyzing and simulating slot machine configurations. This
 src/
 ├── SlotMathEngine/           # Core mathematical engine
 │   ├── Models/               # Symbol, PayLine, Paytable, SlotConfiguration
-│   └── Engines/              # RTPCalculator, VolatilityCalculator, SimulationEngine
+│   └── Engines/              # PayoutEvaluator (shared game rules),
+│                             # TheoreticalAnalyzer (exact enumeration),
+│                             # RTPCalculator, VolatilityCalculator, SimulationEngine
 ├── SlotMathEngine.Tests/     # Comprehensive unit tests
 └── SlotDesignAPI/            # ASP.NET Core Web API
     ├── Controllers/          # AnalysisController
     └── Services/             # ISlotAnalysisService, SlotAnalysisService
 ```
+
+## How the Math Works
+
+All theoretical metrics come from `TheoreticalAnalyzer`, which enumerates every
+possible combination of symbols on the reels referenced by the paytable, evaluates
+each outcome's payout through `PayoutEvaluator` (the same code the simulator uses),
+and accumulates the exact expected value, variance (E[X²] − E[X]²), and hit
+frequency. This is exact for configurations up to 10 million outcomes
+(symbols ^ referenced reels); beyond that the analyzer rejects the request and
+simulation should be used instead.
 
 ## Building
 
@@ -37,15 +49,15 @@ dotnet build
 dotnet test
 ```
 
-All 24 tests should pass, validating:
-- Model initialization and validation
-- RTP calculations against known formulas
-- Volatility measurements
-- Simulation accuracy against theoretical values
+All 41 tests should pass, validating:
+- Model initialization and validation (including malformed-input rejection)
+- Exact RTP, variance, and hit-frequency values against hand-computed distributions
+- Multi-payline correlation handling (the known-wrong "sum of per-line variances" value is explicitly ruled out)
+- Simulation convergence to the theoretical metrics
 
 ## API Endpoints
 
-The API runs on `http://localhost:5000` (development).
+The API runs on `http://localhost:5164` (development, per `launchSettings.json`).
 
 ### Calculate RTP
 ```
@@ -63,9 +75,9 @@ Content-Type: application/json
 
 Response:
 {
-  "rtp": 0.95,
-  "expectedValue": 0.95,
-  "hitFrequency": 0.125
+  "rtp": 0.9267,
+  "expectedValue": 0.9267,
+  "hitFrequency": 0.2111
 }
 ```
 
@@ -96,17 +108,19 @@ Content-Type: application/json
   "numSpins": 100000
 }
 
+numSpins must be between 1 and 1,000,000.
+
 Response:
 {
   "totalWagered": 100000.0,
-  "totalWon": 95000.0,
-  "averageWin": 123.45,
-  "minWin": 0.0,
-  "maxWin": 5000.0,
+  "totalWon": 92600.0,
+  "averageWin": 4.39,
+  "minWin": 1.5,
+  "maxWin": 60.0,
   "totalSpins": 100000,
-  "winningSpins": 770,
-  "actualRTP": 0.95,
-  "resultsCount": 100000
+  "winningSpins": 21100,
+  "actualRTP": 0.926,
+  "actualVariance": 12.4
 }
 ```
 
@@ -129,7 +143,8 @@ Response: Combines RTP, Volatility, and Simulation results
 
 ## Example Configuration
 
-See `examples/simple-3reel-slot.json` for a complete example configuration.
+See `examples/simple-3reel-slot.json` for a complete example configuration
+(theoretical RTP ≈ 92.67%, hit frequency ≈ 21.11%).
 
 ## Key Components
 
@@ -140,16 +155,17 @@ See `examples/simple-3reel-slot.json` for a complete example configuration.
 - **SlotConfiguration**: Complete slot machine configuration
 
 ### Calculation Engines
-- **RTPCalculator**: Computes Return to Player using probability theory
-- **VolatilityCalculator**: Measures variance and volatility index
-- **SimulationEngine**: Runs weighted random spins and evaluates paylines
+- **PayoutEvaluator**: Single source of truth for what a reel outcome pays; used by both theory and simulation
+- **TheoreticalAnalyzer**: Exact expected value, variance, and hit frequency via outcome enumeration
+- **RTPCalculator / VolatilityCalculator**: Thin, stable APIs over the exact analyzer
+- **SimulationEngine**: Runs weighted random spins and evaluates them through PayoutEvaluator
 
 ## Verification
 
 The implementation has been validated through:
-1. **Unit Tests**: 24 tests covering all models and calculations
-2. **Simulation Validation**: 100K spin simulations match theoretical RTP to within 10%
-3. **Mathematical Accuracy**: Formulas verified against slot design theory
+1. **Unit Tests**: 41 tests covering models, validation, and calculations
+2. **Exact-Value Tests**: Multi-payline variance and overlapping-payline hit frequency asserted against hand-computed exact distributions
+3. **Simulation Validation**: 100K-spin runs converge to the theoretical RTP, variance, and hit frequency
 
 ## Tech Stack
 
