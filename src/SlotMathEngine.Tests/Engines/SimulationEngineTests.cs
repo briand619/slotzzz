@@ -5,21 +5,6 @@ using SlotMathEngine.Models;
 
 public class SimulationEngineTests
 {
-    private SlotConfiguration CreateSimpleConfig()
-    {
-        var config = new SlotConfiguration("Simple Slot", 3);
-        config.Symbols.Add(new Symbol("a", "Symbol A", 1m));
-        config.Symbols.Add(new Symbol("b", "Symbol B", 1m));
-        config.Symbols.Add(new Symbol("c", "Symbol C", 1m));
-
-        var payLine = new PayLine(0, new List<int> { 0, 1, 2 });
-        payLine.Rules.Add(new PayLineRule(new List<string> { "a", "a", "a" }, 10m));
-        payLine.Rules.Add(new PayLineRule(new List<string> { "b", "b", "b" }, 5m));
-        config.Paytable.PayLines.Add(payLine);
-
-        return config;
-    }
-
     [Fact]
     public void RunSimulation_ShouldThrowOnInvalidConfig()
     {
@@ -30,22 +15,32 @@ public class SimulationEngineTests
     }
 
     [Fact]
+    public void RunSimulation_ShouldThrowOnNonPositiveSpinCount()
+    {
+        var config = TestConfigs.CreateSimpleConfig();
+        var engine = new SimulationEngine();
+
+        Assert.Throws<ArgumentException>(() => engine.RunSimulation(config, 0));
+        Assert.Throws<ArgumentException>(() => engine.RunSimulation(config, -5));
+    }
+
+    [Fact]
     public void RunSimulation_ShouldReturnValidResult()
     {
-        var config = CreateSimpleConfig();
+        var config = TestConfigs.CreateSimpleConfig();
         var engine = new SimulationEngine();
 
         var result = engine.RunSimulation(config, 1000);
 
         Assert.NotNull(result);
         Assert.Equal(1000, result.TotalSpins);
-        Assert.True(result.TotalWagered > 0);
+        Assert.Equal(1000m * config.Paytable.BaseWager, result.TotalWagered);
     }
 
     [Fact]
     public void RunSimulation_ShouldHaveConsistentMetrics()
     {
-        var config = CreateSimpleConfig();
+        var config = TestConfigs.CreateSimpleConfig();
         var engine = new SimulationEngine();
 
         var result = engine.RunSimulation(config, 10000);
@@ -54,12 +49,13 @@ public class SimulationEngineTests
         Assert.True(result.WinningSpins >= 0);
         Assert.True(result.WinningSpins <= result.TotalSpins);
         Assert.True(result.ActualRTP >= 0);
+        Assert.True(result.ActualVariance >= 0);
     }
 
     [Fact]
     public void RunSimulation_ShouldHaveCorrectAverageWin()
     {
-        var config = CreateSimpleConfig();
+        var config = TestConfigs.CreateSimpleConfig();
         var engine = new SimulationEngine();
 
         var result = engine.RunSimulation(config, 10000);
@@ -74,7 +70,7 @@ public class SimulationEngineTests
     [Fact]
     public void RunSimulation_ShouldApproximateTheoreticalRTP()
     {
-        var config = CreateSimpleConfig();
+        var config = TestConfigs.CreateSimpleConfig();
         var rtpCalculator = new RTPCalculator();
         var simulationEngine = new SimulationEngine();
 
@@ -87,21 +83,42 @@ public class SimulationEngineTests
     }
 
     [Fact]
-    public void RunSimulation_ShouldCollectAllSpinResults()
+    public void RunSimulation_MultiPayline_ShouldApproximateTheoreticalMetrics()
     {
-        var config = CreateSimpleConfig();
-        var engine = new SimulationEngine();
+        // Regression test for the multi-payline math bugs: theoretical RTP, variance,
+        // and hit frequency must all agree with what the simulator actually produces
+        // when paylines share reels.
+        var config = TestConfigs.CreateTwoLineConfig();
+        var metrics = TheoreticalAnalyzer.Compute(config);
+        var result = new SimulationEngine().RunSimulation(config, 100000);
 
-        var result = engine.RunSimulation(config, 100);
+        // Standard errors at 100K spins: RTP ~0.014, variance ~0.07, hit rate ~0.0014.
+        Assert.True(Math.Abs(result.ActualRTP - metrics.ExpectedValue) < 0.1m,
+            $"Simulated RTP {result.ActualRTP} vs theoretical {metrics.ExpectedValue}");
+        Assert.True(Math.Abs(result.ActualVariance - metrics.Variance) < 1.0m,
+            $"Simulated variance {result.ActualVariance} vs theoretical {metrics.Variance}");
 
-        Assert.NotNull(result.SpinResults);
-        Assert.Equal(100, result.SpinResults.Count);
+        decimal simulatedHitRate = (decimal)result.WinningSpins / result.TotalSpins;
+        Assert.True(Math.Abs(simulatedHitRate - metrics.HitFrequency) < 0.02m,
+            $"Simulated hit rate {simulatedHitRate} vs theoretical {metrics.HitFrequency}");
+    }
+
+    [Fact]
+    public void RunSimulation_OverlappingPaylines_HitRateMatchesUnionProbability()
+    {
+        var config = TestConfigs.CreateOverlappingLinesConfig();
+        var result = new SimulationEngine().RunSimulation(config, 100000);
+
+        decimal simulatedHitRate = (decimal)result.WinningSpins / result.TotalSpins;
+
+        Assert.True(Math.Abs(simulatedHitRate - 0.75m) < 0.02m,
+            $"Simulated hit rate {simulatedHitRate} should approximate 0.75");
     }
 
     [Fact]
     public void RunSimulation_DefaultSpins_Should100k()
     {
-        var config = CreateSimpleConfig();
+        var config = TestConfigs.CreateSimpleConfig();
         var engine = new SimulationEngine();
 
         var result = engine.RunSimulation(config);

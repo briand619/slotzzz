@@ -15,15 +15,74 @@ public class SlotConfiguration
         Paytable = new Paytable();
     }
 
-    public bool Validate()
+    public bool Validate() => GetValidationErrors().Count == 0;
+
+    public IReadOnlyList<string> GetValidationErrors()
     {
-        if (NumReels <= 0) return false;
-        if (Symbols.Count == 0) return false;
-        if (Symbols.Any(s => s.Weight <= 0)) return false;
+        var errors = new List<string>();
 
-        var totalWeight = Symbols.Sum(s => s.Weight);
-        if (totalWeight <= 0) return false;
+        if (NumReels <= 0)
+            errors.Add("Number of reels must be positive");
 
-        return true;
+        if (Symbols.Count == 0)
+            errors.Add("Configuration must define at least one symbol");
+
+        if (Symbols.Any(s => s.Weight <= 0))
+            errors.Add("All symbol weights must be positive");
+
+        var duplicateIds = Symbols.GroupBy(s => s.Id).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+        if (duplicateIds.Count > 0)
+            errors.Add($"Duplicate symbol ids: {string.Join(", ", duplicateIds)}");
+
+        if (Paytable.BaseWager <= 0)
+            errors.Add("Base wager must be positive");
+
+        if (Paytable.PayLines.Count == 0)
+            errors.Add("Paytable must define at least one payline");
+
+        var symbolIds = Symbols.Select(s => s.Id).ToHashSet();
+
+        foreach (var payLine in Paytable.PayLines)
+        {
+            if (payLine.ReelPositions == null || payLine.ReelPositions.Count == 0)
+            {
+                errors.Add($"Payline {payLine.Id}: reel positions are missing");
+                continue;
+            }
+
+            if (payLine.ReelPositions.Any(p => p < 0 || p >= NumReels))
+                errors.Add($"Payline {payLine.Id}: reel positions must be between 0 and {NumReels - 1}");
+
+            if (payLine.Rules == null || payLine.Rules.Count == 0)
+            {
+                errors.Add($"Payline {payLine.Id}: must define at least one rule");
+                continue;
+            }
+
+            foreach (var rule in payLine.Rules)
+            {
+                if (rule.SymbolIds == null)
+                {
+                    errors.Add($"Payline {payLine.Id}: a rule is missing its symbol ids");
+                    continue;
+                }
+
+                if (rule.SymbolIds.Count != payLine.ReelPositions.Count)
+                    errors.Add($"Payline {payLine.Id}: rule has {rule.SymbolIds.Count} symbols but the payline has {payLine.ReelPositions.Count} positions");
+
+                var unknown = rule.SymbolIds.Where(id => !symbolIds.Contains(id)).Distinct().ToList();
+                if (unknown.Count > 0)
+                    errors.Add($"Payline {payLine.Id}: rule references unknown symbol ids: {string.Join(", ", unknown)}");
+            }
+        }
+
+        return errors;
+    }
+
+    public void EnsureValid()
+    {
+        var errors = GetValidationErrors();
+        if (errors.Count > 0)
+            throw new ArgumentException($"Invalid slot configuration: {string.Join("; ", errors)}");
     }
 }

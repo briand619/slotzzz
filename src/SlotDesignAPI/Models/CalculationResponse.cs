@@ -24,12 +24,12 @@ public class SimulationResultDto
     public int TotalSpins { get; set; }
     public int WinningSpins { get; set; }
     public decimal ActualRTP { get; set; }
-    public int ResultsCount { get; set; }
+    public decimal ActualVariance { get; set; }
 }
 
 public class FullAnalysisResult
 {
-    public RTPResult RTPAnalysis { get; set; }
-    public VolatilityResult VolatilityAnalysis { get; set; }
-    public SimulationResultDto SimulationResults { get; set; }
+    public required RTPResult RTPAnalysis { get; set; }
+    public required VolatilityResult VolatilityAnalysis { get; set; }
+    public required SimulationResultDto SimulationResults { get; set; }
 }

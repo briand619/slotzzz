@@ -16,7 +16,7 @@ public class SlotConfigurationTests
     }
 
     [Fact]
-    public void SlotConfiguration_Validate_ShouldFailWithZeroReels()
+    public void Validate_ShouldFailWithZeroReels()
     {
         var config = new SlotConfiguration("Test", 0);
         config.Symbols.Add(new Symbol("a", "Symbol A", 1m));
@@ -25,7 +25,7 @@ public class SlotConfigurationTests
     }
 
     [Fact]
-    public void SlotConfiguration_Validate_ShouldFailWithNoSymbols()
+    public void Validate_ShouldFailWithNoSymbols()
     {
         var config = new SlotConfiguration("Test", 3);
 
@@ -33,7 +33,7 @@ public class SlotConfigurationTests
     }
 
     [Fact]
-    public void SlotConfiguration_Validate_ShouldFailWithZeroWeight()
+    public void Validate_ShouldFailWithZeroWeight()
     {
         var config = new SlotConfiguration("Test", 3);
         config.Symbols.Add(new Symbol("a", "Symbol A", 0));
@@ -42,12 +42,102 @@ public class SlotConfigurationTests
     }
 
     [Fact]
-    public void SlotConfiguration_Validate_ShouldSucceedWithValidConfig()
+    public void Validate_ShouldSucceedWithValidConfig()
     {
-        var config = new SlotConfiguration("Test", 3);
-        config.Symbols.Add(new Symbol("a", "Symbol A", 1m));
-        config.Symbols.Add(new Symbol("b", "Symbol B", 1m));
+        var config = TestConfigs.CreateSimpleConfig();
 
         Assert.True(config.Validate());
+        Assert.Empty(config.GetValidationErrors());
+    }
+
+    [Fact]
+    public void Validate_ShouldFailWithZeroBaseWager()
+    {
+        var config = TestConfigs.CreateSimpleConfig();
+        config.Paytable.BaseWager = 0m;
+
+        Assert.False(config.Validate());
+    }
+
+    [Fact]
+    public void Validate_ShouldFailWithEmptyPaytable()
+    {
+        var config = TestConfigs.CreateSimpleConfig();
+        config.Paytable.PayLines.Clear();
+
+        Assert.False(config.Validate());
+    }
+
+    [Fact]
+    public void Validate_ShouldFailWithNullReelPositions()
+    {
+        var config = TestConfigs.CreateSimpleConfig();
+        config.Paytable.PayLines[0].ReelPositions = null!;
+
+        Assert.False(config.Validate());
+    }
+
+    [Fact]
+    public void Validate_ShouldFailWithNullRuleSymbolIds()
+    {
+        var config = TestConfigs.CreateSimpleConfig();
+        config.Paytable.PayLines[0].Rules[0].SymbolIds = null!;
+
+        Assert.False(config.Validate());
+    }
+
+    [Fact]
+    public void Validate_ShouldFailWithOutOfRangeReelPosition()
+    {
+        var config = TestConfigs.CreateSimpleConfig();
+        config.Paytable.PayLines[0].ReelPositions = new List<int> { 0, 1, 5 };
+
+        Assert.False(config.Validate());
+    }
+
+    [Fact]
+    public void Validate_ShouldFailWithNegativeReelPosition()
+    {
+        var config = TestConfigs.CreateSimpleConfig();
+        config.Paytable.PayLines[0].ReelPositions = new List<int> { 0, 1, -1 };
+
+        Assert.False(config.Validate());
+    }
+
+    [Fact]
+    public void Validate_ShouldFailWithUnknownSymbolInRule()
+    {
+        var config = TestConfigs.CreateSimpleConfig();
+        config.Paytable.PayLines[0].Rules[0].SymbolIds = new List<string> { "a", "a", "nonexistent" };
+
+        Assert.False(config.Validate());
+    }
+
+    [Fact]
+    public void Validate_ShouldFailWithRuleLengthMismatch()
+    {
+        var config = TestConfigs.CreateSimpleConfig();
+        config.Paytable.PayLines[0].Rules[0].SymbolIds = new List<string> { "a", "a" };
+
+        Assert.False(config.Validate());
+    }
+
+    [Fact]
+    public void Validate_ShouldFailWithDuplicateSymbolIds()
+    {
+        var config = TestConfigs.CreateSimpleConfig();
+        config.Symbols.Add(new Symbol("a", "Duplicate A", 2m));
+
+        Assert.False(config.Validate());
+    }
+
+    [Fact]
+    public void EnsureValid_ShouldThrowWithErrorDetails()
+    {
+        var config = TestConfigs.CreateSimpleConfig();
+        config.Paytable.BaseWager = 0m;
+
+        var ex = Assert.Throws<ArgumentException>(() => config.EnsureValid());
+        Assert.Contains("wager", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 }
