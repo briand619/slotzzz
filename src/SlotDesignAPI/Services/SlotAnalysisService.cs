@@ -16,7 +16,7 @@ public class SlotAnalysisService : ISlotAnalysisService
 
         return new RTPResult
         {
-            RTP = metrics.ExpectedValue / config.Paytable.BaseWager,
+            RTP = metrics.ExpectedValue / config.Paytable.TotalWager,
             ExpectedValue = metrics.ExpectedValue,
             HitFrequency = metrics.HitFrequency
         };
@@ -104,6 +104,7 @@ public class SlotAnalysisService : ISlotAnalysisService
         if (request.Paytable != null)
         {
             config.Paytable.BaseWager = request.Paytable.BaseWager;
+            config.Paytable.WagerMode = request.Paytable.WagerMode;
 
             if (request.Paytable.PayLines != null)
             {

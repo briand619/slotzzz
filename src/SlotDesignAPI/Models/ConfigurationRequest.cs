@@ -1,5 +1,7 @@
 namespace SlotDesignAPI.Models;
 
+using SlotMathEngine.Models;
+
 public class SymbolDto
 {
     public string? Id { get; set; }
@@ -28,7 +30,12 @@ public class PayLineDto
 public class PaytableDto
 {
     public List<PayLineDto>? PayLines { get; set; }
+
+    /// <summary>The total stake per spin (wagerMode "totalBet", the default) or
+    /// the bet per payline (wagerMode "betPerLine").</summary>
     public decimal BaseWager { get; set; }
+
+    public WagerMode WagerMode { get; set; } = WagerMode.TotalBet;
 }
 
 public class ReelStopDto
