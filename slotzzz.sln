@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlotMathEngine", "src\SlotM
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlotMathEngine.Tests", "src\SlotMathEngine.Tests\SlotMathEngine.Tests.csproj", "{7078ACEE-001A-45AB-8BA1-B7B5CB4F7097}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlotDesignAPI", "src\SlotDesignAPI\SlotDesignAPI.csproj", "{4965DF06-477E-40DC-A339-E3537A1D2BE3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,9 +28,14 @@ Global
 		{7078ACEE-001A-45AB-8BA1-B7B5CB4F7097}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7078ACEE-001A-45AB-8BA1-B7B5CB4F7097}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7078ACEE-001A-45AB-8BA1-B7B5CB4F7097}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4965DF06-477E-40DC-A339-E3537A1D2BE3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4965DF06-477E-40DC-A339-E3537A1D2BE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4965DF06-477E-40DC-A339-E3537A1D2BE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4965DF06-477E-40DC-A339-E3537A1D2BE3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{C236851B-8990-4576-BCB6-538E159F5DF8} = {26AAC459-BCC3-4E50-92D2-F71927463EDB}
 		{7078ACEE-001A-45AB-8BA1-B7B5CB4F7097} = {26AAC459-BCC3-4E50-92D2-F71927463EDB}
+		{4965DF06-477E-40DC-A339-E3537A1D2BE3} = {26AAC459-BCC3-4E50-92D2-F71927463EDB}
 	EndGlobalSection
 EndGlobal
