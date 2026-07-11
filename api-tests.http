@@ -1,0 +1,242 @@
+@baseUrl = http://localhost:5000
+
+### Calculate RTP for Simple Slot
+POST {{baseUrl}}/api/analysis/rtp
+Content-Type: application/json
+
+{
+  "configuration": {
+    "name": "Simple 3-Reel Slot",
+    "numReels": 3,
+    "symbols": [
+      {
+        "id": "cherry",
+        "name": "Cherry",
+        "weight": 5.0
+      },
+      {
+        "id": "bar",
+        "name": "Bar",
+        "weight": 3.0
+      },
+      {
+        "id": "bell",
+        "name": "Bell",
+        "weight": 2.0
+      },
+      {
+        "id": "seven",
+        "name": "Seven",
+        "weight": 1.0
+      }
+    ],
+    "paytable": {
+      "baseWager": 1.0,
+      "payLines": [
+        {
+          "id": 0,
+          "reelPositions": [0, 1, 2],
+          "rules": [
+            {
+              "symbolIds": ["seven", "seven", "seven"],
+              "multiplier": 100.0
+            },
+            {
+              "symbolIds": ["bell", "bell", "bell"],
+              "multiplier": 50.0
+            },
+            {
+              "symbolIds": ["bar", "bar", "bar"],
+              "multiplier": 10.0
+            },
+            {
+              "symbolIds": ["cherry", "cherry", "cherry"],
+              "multiplier": 5.0
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+
+### Calculate Volatility for Simple Slot
+POST {{baseUrl}}/api/analysis/volatility
+Content-Type: application/json
+
+{
+  "configuration": {
+    "name": "Simple 3-Reel Slot",
+    "numReels": 3,
+    "symbols": [
+      {
+        "id": "cherry",
+        "name": "Cherry",
+        "weight": 5.0
+      },
+      {
+        "id": "bar",
+        "name": "Bar",
+        "weight": 3.0
+      },
+      {
+        "id": "bell",
+        "name": "Bell",
+        "weight": 2.0
+      },
+      {
+        "id": "seven",
+        "name": "Seven",
+        "weight": 1.0
+      }
+    ],
+    "paytable": {
+      "baseWager": 1.0,
+      "payLines": [
+        {
+          "id": 0,
+          "reelPositions": [0, 1, 2],
+          "rules": [
+            {
+              "symbolIds": ["seven", "seven", "seven"],
+              "multiplier": 100.0
+            },
+            {
+              "symbolIds": ["bell", "bell", "bell"],
+              "multiplier": 50.0
+            },
+            {
+              "symbolIds": ["bar", "bar", "bar"],
+              "multiplier": 10.0
+            },
+            {
+              "symbolIds": ["cherry", "cherry", "cherry"],
+              "multiplier": 5.0
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+
+### Run Simulation (10,000 spins)
+POST {{baseUrl}}/api/analysis/simulate
+Content-Type: application/json
+
+{
+  "configuration": {
+    "name": "Simple 3-Reel Slot",
+    "numReels": 3,
+    "symbols": [
+      {
+        "id": "cherry",
+        "name": "Cherry",
+        "weight": 5.0
+      },
+      {
+        "id": "bar",
+        "name": "Bar",
+        "weight": 3.0
+      },
+      {
+        "id": "bell",
+        "name": "Bell",
+        "weight": 2.0
+      },
+      {
+        "id": "seven",
+        "name": "Seven",
+        "weight": 1.0
+      }
+    ],
+    "paytable": {
+      "baseWager": 1.0,
+      "payLines": [
+        {
+          "id": 0,
+          "reelPositions": [0, 1, 2],
+          "rules": [
+            {
+              "symbolIds": ["seven", "seven", "seven"],
+              "multiplier": 100.0
+            },
+            {
+              "symbolIds": ["bell", "bell", "bell"],
+              "multiplier": 50.0
+            },
+            {
+              "symbolIds": ["bar", "bar", "bar"],
+              "multiplier": 10.0
+            },
+            {
+              "symbolIds": ["cherry", "cherry", "cherry"],
+              "multiplier": 5.0
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "numSpins": 10000
+}
+
+### Full Analysis
+POST {{baseUrl}}/api/analysis/analyze
+Content-Type: application/json
+
+{
+  "configuration": {
+    "name": "Simple 3-Reel Slot",
+    "numReels": 3,
+    "symbols": [
+      {
+        "id": "cherry",
+        "name": "Cherry",
+        "weight": 5.0
+      },
+      {
+        "id": "bar",
+        "name": "Bar",
+        "weight": 3.0
+      },
+      {
+        "id": "bell",
+        "name": "Bell",
+        "weight": 2.0
+      },
+      {
+        "id": "seven",
+        "name": "Seven",
+        "weight": 1.0
+      }
+    ],
+    "paytable": {
+      "baseWager": 1.0,
+      "payLines": [
+        {
+          "id": 0,
+          "reelPositions": [0, 1, 2],
+          "rules": [
+            {
+              "symbolIds": ["seven", "seven", "seven"],
+              "multiplier": 100.0
+            },
+            {
+              "symbolIds": ["bell", "bell", "bell"],
+              "multiplier": 50.0
+            },
+            {
+              "symbolIds": ["bar", "bar", "bar"],
+              "multiplier": 10.0
+            },
+            {
+              "symbolIds": ["cherry", "cherry", "cherry"],
+              "multiplier": 5.0
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
