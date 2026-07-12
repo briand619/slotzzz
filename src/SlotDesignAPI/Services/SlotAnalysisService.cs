@@ -88,7 +88,11 @@ public class SlotAnalysisService : ISlotAnalysisService
                 config.Symbols.Add(new Symbol(
                     symbolDto.Id ?? string.Empty,
                     symbolDto.Name ?? string.Empty,
-                    symbolDto.Weight));
+                    symbolDto.Weight)
+                {
+                    IsWild = symbolDto.IsWild,
+                    IsScatter = symbolDto.IsScatter
+                });
             }
         }
 
@@ -105,6 +109,17 @@ public class SlotAnalysisService : ISlotAnalysisService
         {
             config.Paytable.BaseWager = request.Paytable.BaseWager;
             config.Paytable.WagerMode = request.Paytable.WagerMode;
+
+            if (request.Paytable.ScatterRules != null)
+            {
+                foreach (var scatterDto in request.Paytable.ScatterRules)
+                {
+                    config.Paytable.ScatterRules.Add(new ScatterRule(
+                        scatterDto.SymbolId ?? string.Empty,
+                        scatterDto.Count,
+                        scatterDto.Multiplier));
+                }
+            }
 
             if (request.Paytable.PayLines != null)
             {

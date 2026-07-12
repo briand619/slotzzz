@@ -67,6 +67,31 @@ public static class TestConfigs
     }
 
     /// <summary>
+    /// A richer config exercising wilds and scatters together: shared weights
+    /// a:3, b:2, wild:1, scatter:1 over 3 reels, one payline with wild-capable
+    /// rules, and two scatter tiers.
+    /// </summary>
+    public static SlotConfiguration CreateWildScatterConfig()
+    {
+        var config = new SlotConfiguration("Wild Scatter Slot", 3);
+        config.Symbols.Add(new Symbol("a", "Symbol A", 3m));
+        config.Symbols.Add(new Symbol("b", "Symbol B", 2m));
+        config.Symbols.Add(new Symbol("w", "Wild", 1m) { IsWild = true });
+        config.Symbols.Add(new Symbol("s", "Scatter", 1m) { IsScatter = true });
+
+        var line = new PayLine(0, new List<int> { 0, 1, 2 });
+        line.Rules.Add(new PayLineRule(new List<string> { "a", "a", "a" }, 5m));
+        line.Rules.Add(new PayLineRule(new List<string> { "b", "b", "b" }, 10m));
+        line.Rules.Add(new PayLineRule(new List<string> { "w", "w", "w" }, 20m));
+        config.Paytable.PayLines.Add(line);
+
+        config.Paytable.ScatterRules.Add(new ScatterRule("s", 2, 2m));
+        config.Paytable.ScatterRules.Add(new ScatterRule("s", 3, 10m));
+
+        return config;
+    }
+
+    /// <summary>
     /// A 3×3 grid: three reels with 8-stop ordered strips, three paylines
     /// (top row, middle row, and a down diagonal), triple-match rules.
     /// </summary>

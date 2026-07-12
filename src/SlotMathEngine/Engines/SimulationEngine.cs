@@ -27,6 +27,7 @@ public class SimulationEngine
             throw new ArgumentException("Number of spins must be at least 1", nameof(numSpins));
 
         var strips = config.GetEffectiveStrips();
+        var evaluator = new PayoutEvaluator(config);
 
         // Per-reel cumulative weight tables for drawing a weighted stop position.
         var cumulativeTables = new decimal[config.NumReels][];
@@ -62,7 +63,7 @@ public class SimulationEngine
                     grid[reel][row] = strip[(stop + row) % strip.Count].SymbolId;
             }
 
-            decimal payout = PayoutEvaluator.EvaluatePayout(config, grid);
+            decimal payout = evaluator.EvaluatePayout(grid);
 
             totalWon += payout;
             sumOfSquares += payout * payout;

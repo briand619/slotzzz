@@ -1,0 +1,31 @@
+{
+  "name": "Wild & Scatter Slot",
+  "numReels": 3,
+  "symbols": [
+    { "id": "cherry", "name": "Cherry", "weight": 5.0 },
+    { "id": "bar", "name": "Bar", "weight": 3.0 },
+    { "id": "bell", "name": "Bell", "weight": 2.0 },
+    { "id": "seven", "name": "Seven", "weight": 1.0 },
+    { "id": "wild", "name": "Wild", "weight": 1.0, "isWild": true },
+    { "id": "scatter", "name": "Scatter", "weight": 1.0, "isScatter": true }
+  ],
+  "paytable": {
+    "baseWager": 1.0,
+    "payLines": [
+      {
+        "id": 0,
+        "reelPositions": [0, 1, 2],
+        "rules": [
+          { "symbolIds": ["seven", "seven", "seven"], "multiplier": 40.0 },
+          { "symbolIds": ["bell", "bell", "bell"], "multiplier": 20.0 },
+          { "symbolIds": ["bar", "bar", "bar"], "multiplier": 6.0 },
+          { "symbolIds": ["cherry", "cherry", "cherry"], "multiplier": 3.0 }
+        ]
+      }
+    ],
+    "scatterRules": [
+      { "symbolId": "scatter", "count": 2, "multiplier": 2.0 },
+      { "symbolId": "scatter", "count": 3, "multiplier": 25.0 }
+    ]
+  }
+}
