@@ -146,6 +146,51 @@ and scatter.
 See `examples/wild-scatter-slot.json` (theoretical RTP ≈ 89.21%, hit
 frequency ≈ 15.89%).
 
+## Hold & Spin (Lightning Link–style)
+
+Add a `holdAndSpin` block to model the lock-and-respin bonus popularized by
+Lightning Link / Dragon Link:
+
+```json
+"holdAndSpin": {
+  "coinSymbolId": "coin",
+  "triggerCount": 3,
+  "respinCount": 3,
+  "coinProbability": 0.06,
+  "coinValues": [
+    { "value": 0.5, "weight": 8.0 },
+    { "value": 1.0, "weight": 5.0 },
+    { "value": 2.0, "weight": 2.0 },
+    { "value": 8.0, "weight": 0.75, "label": "mini" },
+    { "value": 20.0, "weight": 0.25, "label": "minor" }
+  ],
+  "grandMultiplier": 150.0
+}
+```
+
+Mechanics: when at least `triggerCount` coin symbols land anywhere on the
+base-game grid, they lock and the feature starts with `respinCount` respins.
+Each respin, every unlocked cell independently lands a new coin with
+`coinProbability`; any hit locks the coins and **resets the respin counter**, a
+miss decrements it. The feature ends when the counter reaches zero or the grid
+is full. The award is the sum of the locked coins' values (drawn from the
+weighted `coinValues` table) plus `grandMultiplier` for a full grid — all
+multipliers apply to the **total stake**, and respins cost nothing. Labels on
+coin values are descriptive (fixed jackpot tiers like mini/minor).
+
+The coin symbol must be marked `isScatter` (coins count anywhere and wilds
+never substitute for them).
+
+The math stays **exact**: the feature is an absorbing Markov chain over
+(locked coins, respins left) — acyclic because coins only accumulate — solved
+by dynamic programming for the exact final-count distribution, then combined
+with the coin-value distribution as a compound sum. The simulator plays the
+feature as an actual respin loop, an independent implementation used to
+cross-validate the chain.
+
+See `examples/hold-and-spin-slot.json` (theoretical RTP ≈ 94.61%, hit
+frequency ≈ 20.30%, grand pays 150× total stake).
+
 ## How the Math Works
 
 All theoretical metrics come from `TheoreticalAnalyzer`, which enumerates every

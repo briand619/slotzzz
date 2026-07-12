@@ -62,6 +62,23 @@ public class ReelStripDto
     public List<ReelStopDto>? Stops { get; set; }
 }
 
+public class CoinValueDto
+{
+    public decimal Value { get; set; }
+    public decimal Weight { get; set; }
+    public string? Label { get; set; }
+}
+
+public class HoldAndSpinDto
+{
+    public string? CoinSymbolId { get; set; }
+    public int TriggerCount { get; set; }
+    public int RespinCount { get; set; } = 3;
+    public decimal CoinProbability { get; set; }
+    public List<CoinValueDto>? CoinValues { get; set; }
+    public decimal GrandMultiplier { get; set; }
+}
+
 public class SlotConfigurationRequest
 {
     public string? Name { get; set; }
@@ -78,6 +95,9 @@ public class SlotConfigurationRequest
     public List<ReelStripDto>? Reels { get; set; }
 
     public PaytableDto? Paytable { get; set; }
+
+    /// <summary>Optional Lightning Link–style hold-and-spin bonus.</summary>
+    public HoldAndSpinDto? HoldAndSpin { get; set; }
 }
 
 public class CalculationRequest

@@ -143,6 +143,26 @@ public class SlotAnalysisService : ISlotAnalysisService
             }
         }
 
+        if (request.HoldAndSpin != null)
+        {
+            var feature = new HoldAndSpinFeature(
+                request.HoldAndSpin.CoinSymbolId ?? string.Empty,
+                request.HoldAndSpin.TriggerCount,
+                request.HoldAndSpin.CoinProbability)
+            {
+                RespinCount = request.HoldAndSpin.RespinCount,
+                GrandMultiplier = request.HoldAndSpin.GrandMultiplier
+            };
+
+            if (request.HoldAndSpin.CoinValues != null)
+            {
+                foreach (var coinValueDto in request.HoldAndSpin.CoinValues)
+                    feature.CoinValues.Add(new CoinValue(coinValueDto.Value, coinValueDto.Weight, coinValueDto.Label));
+            }
+
+            config.HoldAndSpin = feature;
+        }
+
         config.EnsureValid();
         return config;
     }

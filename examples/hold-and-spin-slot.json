@@ -1,0 +1,328 @@
+{
+  "name": "Hold & Spin Slot (3x3, coin trigger with jackpot tiers)",
+  "numReels": 3,
+  "numRows": 3,
+  "symbols": [
+    {
+      "id": "cherry",
+      "name": "Cherry"
+    },
+    {
+      "id": "bar",
+      "name": "Bar"
+    },
+    {
+      "id": "bell",
+      "name": "Bell"
+    },
+    {
+      "id": "seven",
+      "name": "Seven"
+    },
+    {
+      "id": "coin",
+      "name": "Coin",
+      "isScatter": true
+    }
+  ],
+  "reels": [
+    {
+      "stops": [
+        {
+          "symbolId": "cherry",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "bar",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "cherry",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "bell",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "coin",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "cherry",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "bar",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "seven",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "bell",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "stops": [
+        {
+          "symbolId": "bar",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "cherry",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "bell",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "coin",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "cherry",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "seven",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "bar",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "cherry",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "bell",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "stops": [
+        {
+          "symbolId": "cherry",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "bell",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "bar",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "cherry",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "coin",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "bar",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "cherry",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "bell",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "seven",
+          "weight": 1.0
+        }
+      ]
+    }
+  ],
+  "paytable": {
+    "baseWager": 1.0,
+    "wagerMode": "betPerLine",
+    "payLines": [
+      {
+        "id": 0,
+        "reelPositions": [
+          0,
+          1,
+          2
+        ],
+        "rowPositions": [
+          0,
+          0,
+          0
+        ],
+        "rules": [
+          {
+            "symbolIds": [
+              "seven",
+              "seven",
+              "seven"
+            ],
+            "multiplier": 60.0
+          },
+          {
+            "symbolIds": [
+              "bell",
+              "bell",
+              "bell"
+            ],
+            "multiplier": 30.0
+          },
+          {
+            "symbolIds": [
+              "bar",
+              "bar",
+              "bar"
+            ],
+            "multiplier": 8.0
+          },
+          {
+            "symbolIds": [
+              "cherry",
+              "cherry",
+              "cherry"
+            ],
+            "multiplier": 4.0
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "reelPositions": [
+          0,
+          1,
+          2
+        ],
+        "rowPositions": [
+          1,
+          1,
+          1
+        ],
+        "rules": [
+          {
+            "symbolIds": [
+              "seven",
+              "seven",
+              "seven"
+            ],
+            "multiplier": 60.0
+          },
+          {
+            "symbolIds": [
+              "bell",
+              "bell",
+              "bell"
+            ],
+            "multiplier": 30.0
+          },
+          {
+            "symbolIds": [
+              "bar",
+              "bar",
+              "bar"
+            ],
+            "multiplier": 8.0
+          },
+          {
+            "symbolIds": [
+              "cherry",
+              "cherry",
+              "cherry"
+            ],
+            "multiplier": 4.0
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "reelPositions": [
+          0,
+          1,
+          2
+        ],
+        "rowPositions": [
+          0,
+          1,
+          2
+        ],
+        "rules": [
+          {
+            "symbolIds": [
+              "seven",
+              "seven",
+              "seven"
+            ],
+            "multiplier": 60.0
+          },
+          {
+            "symbolIds": [
+              "bell",
+              "bell",
+              "bell"
+            ],
+            "multiplier": 30.0
+          },
+          {
+            "symbolIds": [
+              "bar",
+              "bar",
+              "bar"
+            ],
+            "multiplier": 8.0
+          },
+          {
+            "symbolIds": [
+              "cherry",
+              "cherry",
+              "cherry"
+            ],
+            "multiplier": 4.0
+          }
+        ]
+      }
+    ]
+  },
+  "holdAndSpin": {
+    "coinSymbolId": "coin",
+    "triggerCount": 3,
+    "respinCount": 3,
+    "coinProbability": 0.06,
+    "coinValues": [
+      {
+        "value": 0.5,
+        "weight": 8.0
+      },
+      {
+        "value": 1.0,
+        "weight": 5.0
+      },
+      {
+        "value": 2.0,
+        "weight": 2.0
+      },
+      {
+        "value": 8.0,
+        "weight": 0.75,
+        "label": "mini"
+      },
+      {
+        "value": 20.0,
+        "weight": 0.25,
+        "label": "minor"
+      }
+    ],
+    "grandMultiplier": 150.0
+  }
+}

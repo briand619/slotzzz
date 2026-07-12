@@ -92,6 +92,38 @@ public static class TestConfigs
     }
 
     /// <summary>
+    /// A hold-and-spin game: 3 reels, coin symbol (scatter), trigger at 2 coins,
+    /// 2 respins at p=0.2 per cell, mixed coin values including a labeled "mini"
+    /// jackpot, and a 25x grand for a full grid.
+    /// </summary>
+    public static SlotConfiguration CreateHoldAndSpinConfig()
+    {
+        var config = new SlotConfiguration("Hold And Spin Slot", 3);
+        config.Symbols.Add(new Symbol("a", "Symbol A", 3m));
+        config.Symbols.Add(new Symbol("b", "Symbol B", 2m));
+        config.Symbols.Add(new Symbol("coin", "Coin", 1m) { IsScatter = true });
+
+        var line = new PayLine(0, new List<int> { 0, 1, 2 });
+        line.Rules.Add(new PayLineRule(new List<string> { "a", "a", "a" }, 5m));
+        line.Rules.Add(new PayLineRule(new List<string> { "b", "b", "b" }, 10m));
+        config.Paytable.PayLines.Add(line);
+
+        config.HoldAndSpin = new HoldAndSpinFeature("coin", 2, 0.2m)
+        {
+            RespinCount = 2,
+            GrandMultiplier = 25m,
+            CoinValues =
+            {
+                new CoinValue(1m, 4m),
+                new CoinValue(5m, 1m),
+                new CoinValue(10m, 0.2m, "mini")
+            }
+        };
+
+        return config;
+    }
+
+    /// <summary>
     /// A 3×3 grid: three reels with 8-stop ordered strips, three paylines
     /// (top row, middle row, and a down diagonal), triple-match rules.
     /// </summary>
