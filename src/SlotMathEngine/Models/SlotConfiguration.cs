@@ -25,6 +25,10 @@ public class SlotConfiguration
 
     public Paytable Paytable { get; set; }
 
+    /// <summary>Optional Lightning Link–style hold-and-spin bonus, triggered by
+    /// coin symbols landing anywhere on the base-game grid.</summary>
+    public HoldAndSpinFeature? HoldAndSpin { get; set; }
+
     public SlotConfiguration(string name, int numReels)
     {
         Name = name;
@@ -152,6 +156,33 @@ public class SlotConfiguration
             int gridCells = NumReels * NumRows;
             if (scatterRule.Count < 1 || scatterRule.Count > gridCells)
                 errors.Add($"Scatter rule for '{scatterRule.SymbolId}': count {scatterRule.Count} is outside the grid's range of 1 to {gridCells} cells");
+        }
+
+        if (HoldAndSpin != null)
+        {
+            var coinSymbol = Symbols.FirstOrDefault(s => s.Id == HoldAndSpin.CoinSymbolId);
+            if (coinSymbol == null)
+                errors.Add($"Hold-and-spin: references unknown coin symbol id '{HoldAndSpin.CoinSymbolId}'");
+            else if (!coinSymbol.IsScatter)
+                errors.Add($"Hold-and-spin: coin symbol '{HoldAndSpin.CoinSymbolId}' must be marked as a scatter (coins pay anywhere and wilds must not substitute for them)");
+
+            int gridCells = NumReels * NumRows;
+            if (HoldAndSpin.TriggerCount < 1 || HoldAndSpin.TriggerCount > gridCells)
+                errors.Add($"Hold-and-spin: trigger count {HoldAndSpin.TriggerCount} is outside the grid's range of 1 to {gridCells} cells");
+
+            if (HoldAndSpin.RespinCount < 1)
+                errors.Add("Hold-and-spin: respin count must be at least 1");
+
+            if (HoldAndSpin.CoinProbability < 0 || HoldAndSpin.CoinProbability > 1)
+                errors.Add("Hold-and-spin: coin probability must be between 0 and 1");
+
+            if (HoldAndSpin.CoinValues.Count == 0)
+                errors.Add("Hold-and-spin: must define at least one coin value");
+            else if (HoldAndSpin.CoinValues.Any(v => v.Value <= 0 || v.Weight <= 0))
+                errors.Add("Hold-and-spin: all coin values and weights must be positive");
+
+            if (HoldAndSpin.GrandMultiplier < 0)
+                errors.Add("Hold-and-spin: grand multiplier cannot be negative");
         }
 
         foreach (var payLine in Paytable.PayLines)

@@ -24,9 +24,10 @@ public static class TheoreticalAnalyzer
     {
         config.EnsureValid();
 
-        // Scatters read every cell of the grid, so with scatter rules present all
-        // reels influence the payout; otherwise only reels named by paylines do.
-        var referencedReels = config.Paytable.ScatterRules.Count > 0
+        // Scatters and hold-and-spin coins read every cell of the grid, so with
+        // either present all reels influence the payout; otherwise only reels
+        // named by paylines do.
+        var referencedReels = config.Paytable.ScatterRules.Count > 0 || config.HoldAndSpin != null
             ? Enumerable.Range(0, config.NumReels).ToArray()
             : config.Paytable.PayLines
                 .SelectMany(pl => pl.ReelPositions)
@@ -45,6 +46,19 @@ public static class TheoreticalAnalyzer
 
         var totalWeights = strips.Select(strip => strip.Sum(st => st.Weight)).ToArray();
         var evaluator = new PayoutEvaluator(config);
+
+        // With hold-and-spin, the total payout of a base-game outcome that lands
+        // k >= trigger coins is basePayout + FeatureAward(k), where the award is
+        // random beyond the grid. Its exact conditional moments per k come from
+        // the feature's Markov chain, precomputed once here.
+        int gridCells = config.NumReels * config.NumRows;
+        var featureMean = new decimal[gridCells + 1];
+        var featureSecond = new decimal[gridCells + 1];
+        if (config.HoldAndSpin != null)
+        {
+            for (int k = config.HoldAndSpin.TriggerCount; k <= gridCells; k++)
+                (featureMean[k], featureSecond[k]) = HoldAndSpinAnalyzer.AwardMoments(config, k);
+        }
 
         var grid = new string[config.NumReels][];
         for (int reel = 0; reel < config.NumReels; reel++)
@@ -72,10 +86,27 @@ public static class TheoreticalAnalyzer
             }
 
             decimal payout = evaluator.EvaluatePayout(grid);
-            expectedValue += probability * payout;
-            expectedSquare += probability * payout * payout;
-            if (payout > 0)
+
+            int coins = config.HoldAndSpin != null
+                ? PayoutEvaluator.CountOnGrid(config.HoldAndSpin.CoinSymbolId, grid)
+                : 0;
+
+            if (config.HoldAndSpin != null && coins >= config.HoldAndSpin.TriggerCount)
+            {
+                // E[(base + F)²] = base² + 2·base·E[F|k] + E[F²|k]; the feature
+                // always awards at least the triggering coins, so this is a hit.
+                expectedValue += probability * (payout + featureMean[coins]);
+                expectedSquare += probability *
+                    (payout * payout + 2 * payout * featureMean[coins] + featureSecond[coins]);
                 hitProbability += probability;
+            }
+            else
+            {
+                expectedValue += probability * payout;
+                expectedSquare += probability * payout * payout;
+                if (payout > 0)
+                    hitProbability += probability;
+            }
 
             int pos = reelCount - 1;
             while (pos >= 0 && ++stopIndex[pos] == strips[referencedReels[pos]].Count)

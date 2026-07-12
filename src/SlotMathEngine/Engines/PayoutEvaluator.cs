@@ -87,7 +87,7 @@ public sealed class PayoutEvaluator
         return _wildIds.Contains(gridSymbol) && !_scatterIds.Contains(requiredSymbol);
     }
 
-    private static int CountOnGrid(string symbolId, string[][] grid)
+    public static int CountOnGrid(string symbolId, string[][] grid)
     {
         int count = 0;
         foreach (var reel in grid)

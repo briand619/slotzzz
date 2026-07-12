@@ -29,6 +29,19 @@ public class SimulationEngine
         var strips = config.GetEffectiveStrips();
         var evaluator = new PayoutEvaluator(config);
 
+        // Cumulative weights for drawing hold-and-spin coin values.
+        decimal[]? coinValueCumulative = null;
+        if (config.HoldAndSpin != null)
+        {
+            coinValueCumulative = new decimal[config.HoldAndSpin.CoinValues.Count];
+            decimal cumulativeValueWeight = 0;
+            for (int i = 0; i < config.HoldAndSpin.CoinValues.Count; i++)
+            {
+                cumulativeValueWeight += config.HoldAndSpin.CoinValues[i].Weight;
+                coinValueCumulative[i] = cumulativeValueWeight;
+            }
+        }
+
         // Per-reel cumulative weight tables for drawing a weighted stop position.
         var cumulativeTables = new decimal[config.NumReels][];
         for (int reel = 0; reel < config.NumReels; reel++)
@@ -65,6 +78,13 @@ public class SimulationEngine
 
             decimal payout = evaluator.EvaluatePayout(grid);
 
+            if (config.HoldAndSpin != null)
+            {
+                int coins = PayoutEvaluator.CountOnGrid(config.HoldAndSpin.CoinSymbolId, grid);
+                if (coins >= config.HoldAndSpin.TriggerCount)
+                    payout += PlayHoldAndSpin(config, coins, coinValueCumulative!);
+            }
+
             totalWon += payout;
             sumOfSquares += payout * payout;
 
@@ -93,6 +113,54 @@ public class SimulationEngine
             ActualRTP = totalWon / totalWagered,
             ActualVariance = sumOfSquares / numSpins - meanPayout * meanPayout
         };
+    }
+
+    private decimal PlayHoldAndSpin(SlotConfiguration config, int initialCoins, decimal[] coinValueCumulative)
+    {
+        var feature = config.HoldAndSpin!;
+        int gridCells = config.NumReels * config.NumRows;
+        decimal stake = config.Paytable.TotalWager;
+
+        int locked = Math.Min(initialCoins, gridCells);
+        decimal award = DrawCoinValues(feature, coinValueCumulative, locked) * stake;
+        int respins = feature.RespinCount;
+
+        while (respins > 0 && locked < gridCells)
+        {
+            int newCoins = 0;
+            for (int cell = locked; cell < gridCells; cell++)
+            {
+                if ((decimal)_random.NextDouble() < feature.CoinProbability)
+                    newCoins++;
+            }
+
+            if (newCoins > 0)
+            {
+                locked += newCoins;
+                award += DrawCoinValues(feature, coinValueCumulative, newCoins) * stake;
+                respins = feature.RespinCount;
+            }
+            else
+            {
+                respins--;
+            }
+        }
+
+        if (locked == gridCells)
+            award += feature.GrandMultiplier * stake;
+
+        return award;
+    }
+
+    private decimal DrawCoinValues(HoldAndSpinFeature feature, decimal[] coinValueCumulative, int count)
+    {
+        decimal total = 0;
+        for (int i = 0; i < count; i++)
+        {
+            int index = DrawStopIndex(coinValueCumulative);
+            total += feature.CoinValues[index].Value;
+        }
+        return total;
     }
 
     private int DrawStopIndex(decimal[] cumulativeWeights)
