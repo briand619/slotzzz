@@ -112,6 +112,40 @@ RTP is always total payouts relative to the total stake. The wager mode does not
 change the payout distribution itself (expected value, variance, and hit
 frequency are properties of the wins); it changes what those wins cost.
 
+## Wilds and Scatters
+
+Mark symbols in the catalog:
+
+```json
+"symbols": [
+  { "id": "seven", "name": "Seven", "weight": 1.0 },
+  { "id": "wild", "name": "Wild", "weight": 1.0, "isWild": true },
+  { "id": "scatter", "name": "Scatter", "weight": 1.0, "isScatter": true }
+]
+```
+
+- **Wilds** substitute for any non-scatter symbol when matching payline rules
+  (a rule can also require the wild itself, e.g. `["wild","wild","wild"]`).
+- **Scatters** pay anywhere on the visible grid, independent of paylines, via
+  `scatterRules` on the paytable — one rule per exact count tier, each paying
+  its multiplier on the **total stake**:
+
+```json
+"scatterRules": [
+  { "symbolId": "scatter", "count": 2, "multiplier": 2.0 },
+  { "symbolId": "scatter", "count": 3, "multiplier": 25.0 }
+]
+```
+
+Payout semantics: per payline only the **highest-paying matching rule** pays
+(the real-slot convention — essential once wilds let several rules match the
+same line at once); wins from different paylines add up, and scatter wins add
+on top. Wilds never substitute for scatters, and a symbol cannot be both wild
+and scatter.
+
+See `examples/wild-scatter-slot.json` (theoretical RTP ≈ 89.21%, hit
+frequency ≈ 15.89%).
+
 ## How the Math Works
 
 All theoretical metrics come from `TheoreticalAnalyzer`, which enumerates every

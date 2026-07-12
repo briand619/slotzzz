@@ -94,6 +94,9 @@ public class SlotConfiguration
         if (duplicateIds.Count > 0)
             errors.Add($"Duplicate symbol ids: {string.Join(", ", duplicateIds)}");
 
+        foreach (var symbol in Symbols.Where(s => s.IsWild && s.IsScatter))
+            errors.Add($"Symbol '{symbol.Id}': cannot be both wild and scatter");
+
         var symbolIds = Symbols.Select(s => s.Id).ToHashSet();
 
         if (HasExplicitReels)
@@ -137,6 +140,19 @@ public class SlotConfiguration
 
         if (Paytable.PayLines.Count == 0)
             errors.Add("Paytable must define at least one payline");
+
+        foreach (var scatterRule in Paytable.ScatterRules)
+        {
+            var scatterSymbol = Symbols.FirstOrDefault(s => s.Id == scatterRule.SymbolId);
+            if (scatterSymbol == null)
+                errors.Add($"Scatter rule: references unknown symbol id '{scatterRule.SymbolId}'");
+            else if (!scatterSymbol.IsScatter)
+                errors.Add($"Scatter rule: symbol '{scatterRule.SymbolId}' is not marked as a scatter");
+
+            int gridCells = NumReels * NumRows;
+            if (scatterRule.Count < 1 || scatterRule.Count > gridCells)
+                errors.Add($"Scatter rule for '{scatterRule.SymbolId}': count {scatterRule.Count} is outside the grid's range of 1 to {gridCells} cells");
+        }
 
         foreach (var payLine in Paytable.PayLines)
         {

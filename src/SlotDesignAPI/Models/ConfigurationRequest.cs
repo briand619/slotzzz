@@ -7,6 +7,15 @@ public class SymbolDto
     public string? Id { get; set; }
     public string? Name { get; set; }
     public decimal Weight { get; set; }
+    public bool IsWild { get; set; }
+    public bool IsScatter { get; set; }
+}
+
+public class ScatterRuleDto
+{
+    public string? SymbolId { get; set; }
+    public int Count { get; set; }
+    public decimal Multiplier { get; set; }
 }
 
 public class PayLineRuleDto
@@ -30,6 +39,10 @@ public class PayLineDto
 public class PaytableDto
 {
     public List<PayLineDto>? PayLines { get; set; }
+
+    /// <summary>Grid-wide scatter pays (multiplier × total stake per exact-count
+    /// tier), added on top of line wins.</summary>
+    public List<ScatterRuleDto>? ScatterRules { get; set; }
 
     /// <summary>The total stake per spin (wagerMode "totalBet", the default) or
     /// the bet per payline (wagerMode "betPerLine").</summary>

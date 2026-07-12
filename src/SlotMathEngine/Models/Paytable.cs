@@ -17,6 +17,11 @@ public enum WagerMode
 public class Paytable
 {
     public List<PayLine> PayLines { get; set; }
+
+    /// <summary>Grid-wide scatter pays, evaluated independently of paylines and
+    /// added on top of line wins.</summary>
+    public List<ScatterRule> ScatterRules { get; set; } = new();
+
     public decimal BaseWager { get; set; }
     public WagerMode WagerMode { get; set; } = WagerMode.TotalBet;
 

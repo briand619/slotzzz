@@ -24,10 +24,14 @@ public static class TheoreticalAnalyzer
     {
         config.EnsureValid();
 
-        var referencedReels = config.Paytable.PayLines
-            .SelectMany(pl => pl.ReelPositions)
-            .Distinct()
-            .ToArray();
+        // Scatters read every cell of the grid, so with scatter rules present all
+        // reels influence the payout; otherwise only reels named by paylines do.
+        var referencedReels = config.Paytable.ScatterRules.Count > 0
+            ? Enumerable.Range(0, config.NumReels).ToArray()
+            : config.Paytable.PayLines
+                .SelectMany(pl => pl.ReelPositions)
+                .Distinct()
+                .ToArray();
 
         var strips = config.GetEffectiveStrips();
 
@@ -40,6 +44,7 @@ public static class TheoreticalAnalyzer
                 "across the reels referenced by the paytable. Use simulation instead.");
 
         var totalWeights = strips.Select(strip => strip.Sum(st => st.Weight)).ToArray();
+        var evaluator = new PayoutEvaluator(config);
 
         var grid = new string[config.NumReels][];
         for (int reel = 0; reel < config.NumReels; reel++)
@@ -66,7 +71,7 @@ public static class TheoreticalAnalyzer
                     grid[reel][row] = strip[(stopIndex[k] + row) % strip.Count].SymbolId;
             }
 
-            decimal payout = PayoutEvaluator.EvaluatePayout(config, grid);
+            decimal payout = evaluator.EvaluatePayout(grid);
             expectedValue += probability * payout;
             expectedSquare += probability * payout * payout;
             if (payout > 0)
