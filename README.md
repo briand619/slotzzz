@@ -112,6 +112,35 @@ RTP is always total payouts relative to the total stake. The wager mode does not
 change the payout distribution itself (expected value, variance, and hit
 frequency are properties of the wins); it changes what those wins cost.
 
+## Left-to-Right N-of-a-Kind Rules
+
+Alongside exact-position rules, a payline can carry `kindRules` — the classic
+video-slot paytable style where a symbol pays for 3, 4, or 5 consecutive
+matches from the line's first position:
+
+```json
+{
+  "id": 0,
+  "reelPositions": [0, 1, 2, 3, 4],
+  "rowPositions": [1, 1, 1, 1, 1],
+  "kindRules": [
+    { "symbolId": "gem", "count": 3, "multiplier": 7.0 },
+    { "symbolId": "gem", "count": 4, "multiplier": 22.0 },
+    { "symbolId": "gem", "count": 5, "multiplier": 75.0 }
+  ]
+}
+```
+
+A kind rule matches when the first `count` positions of the line all show the
+symbol, with wilds substituting. Because only a line's highest-paying match
+wins, a longer run automatically pays its higher tier, and exact-position rules
+and kind rules can coexist on the same line.
+
+See `examples/five-reel-video-slot.json` for a classic 5×3 game — per-reel
+strips, three lines with 3/4/5-of-a-kind tiers for four symbols, a wild, and
+scatters on reels 1/3/5 (theoretical RTP = 93.5215% exactly, hit
+frequency ≈ 35.32%).
+
 ## Wilds and Scatters
 
 Mark symbols in the catalog:

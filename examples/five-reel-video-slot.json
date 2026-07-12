@@ -1,0 +1,505 @@
+{
+  "name": "Classic 5x3 Video Slot (N-of-a-kind, wild, scatter)",
+  "numReels": 5,
+  "numRows": 3,
+  "symbols": [
+    {
+      "id": "queen",
+      "name": "Queen"
+    },
+    {
+      "id": "king",
+      "name": "King"
+    },
+    {
+      "id": "ace",
+      "name": "Ace"
+    },
+    {
+      "id": "gem",
+      "name": "Gem"
+    },
+    {
+      "id": "wild",
+      "name": "Wild",
+      "isWild": true
+    },
+    {
+      "id": "scatter",
+      "name": "Scatter",
+      "isScatter": true
+    }
+  ],
+  "reels": [
+    {
+      "stops": [
+        {
+          "symbolId": "queen",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "king",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "ace",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "scatter",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "king",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "gem",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "ace",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "queen",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "king",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "wild",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "stops": [
+        {
+          "symbolId": "king",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "queen",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "ace",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "queen",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "gem",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "king",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "queen",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "ace",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "king",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "wild",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "stops": [
+        {
+          "symbolId": "ace",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "king",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "queen",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "scatter",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "queen",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "gem",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "king",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "queen",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "ace",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "wild",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "stops": [
+        {
+          "symbolId": "queen",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "ace",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "king",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "queen",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "gem",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "ace",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "king",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "queen",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "king",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "wild",
+          "weight": 1.0
+        }
+      ]
+    },
+    {
+      "stops": [
+        {
+          "symbolId": "king",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "queen",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "scatter",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "ace",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "queen",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "gem",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "queen",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "king",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "ace",
+          "weight": 1.0
+        },
+        {
+          "symbolId": "wild",
+          "weight": 1.0
+        }
+      ]
+    }
+  ],
+  "paytable": {
+    "baseWager": 1.0,
+    "wagerMode": "betPerLine",
+    "payLines": [
+      {
+        "id": 0,
+        "reelPositions": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "rowPositions": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "kindRules": [
+          {
+            "symbolId": "gem",
+            "count": 3,
+            "multiplier": 7
+          },
+          {
+            "symbolId": "gem",
+            "count": 4,
+            "multiplier": 22
+          },
+          {
+            "symbolId": "gem",
+            "count": 5,
+            "multiplier": 75
+          },
+          {
+            "symbolId": "ace",
+            "count": 3,
+            "multiplier": 3.5
+          },
+          {
+            "symbolId": "ace",
+            "count": 4,
+            "multiplier": 11
+          },
+          {
+            "symbolId": "ace",
+            "count": 5,
+            "multiplier": 36
+          },
+          {
+            "symbolId": "king",
+            "count": 3,
+            "multiplier": 3
+          },
+          {
+            "symbolId": "king",
+            "count": 4,
+            "multiplier": 7.5
+          },
+          {
+            "symbolId": "king",
+            "count": 5,
+            "multiplier": 22
+          },
+          {
+            "symbolId": "queen",
+            "count": 3,
+            "multiplier": 2
+          },
+          {
+            "symbolId": "queen",
+            "count": 4,
+            "multiplier": 6
+          },
+          {
+            "symbolId": "queen",
+            "count": 5,
+            "multiplier": 15
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "reelPositions": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "rowPositions": [
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "kindRules": [
+          {
+            "symbolId": "gem",
+            "count": 3,
+            "multiplier": 7
+          },
+          {
+            "symbolId": "gem",
+            "count": 4,
+            "multiplier": 22
+          },
+          {
+            "symbolId": "gem",
+            "count": 5,
+            "multiplier": 75
+          },
+          {
+            "symbolId": "ace",
+            "count": 3,
+            "multiplier": 3.5
+          },
+          {
+            "symbolId": "ace",
+            "count": 4,
+            "multiplier": 11
+          },
+          {
+            "symbolId": "ace",
+            "count": 5,
+            "multiplier": 36
+          },
+          {
+            "symbolId": "king",
+            "count": 3,
+            "multiplier": 3
+          },
+          {
+            "symbolId": "king",
+            "count": 4,
+            "multiplier": 7.5
+          },
+          {
+            "symbolId": "king",
+            "count": 5,
+            "multiplier": 22
+          },
+          {
+            "symbolId": "queen",
+            "count": 3,
+            "multiplier": 2
+          },
+          {
+            "symbolId": "queen",
+            "count": 4,
+            "multiplier": 6
+          },
+          {
+            "symbolId": "queen",
+            "count": 5,
+            "multiplier": 15
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "reelPositions": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "rowPositions": [
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "kindRules": [
+          {
+            "symbolId": "gem",
+            "count": 3,
+            "multiplier": 7
+          },
+          {
+            "symbolId": "gem",
+            "count": 4,
+            "multiplier": 22
+          },
+          {
+            "symbolId": "gem",
+            "count": 5,
+            "multiplier": 75
+          },
+          {
+            "symbolId": "ace",
+            "count": 3,
+            "multiplier": 3.5
+          },
+          {
+            "symbolId": "ace",
+            "count": 4,
+            "multiplier": 11
+          },
+          {
+            "symbolId": "ace",
+            "count": 5,
+            "multiplier": 36
+          },
+          {
+            "symbolId": "king",
+            "count": 3,
+            "multiplier": 3
+          },
+          {
+            "symbolId": "king",
+            "count": 4,
+            "multiplier": 7.5
+          },
+          {
+            "symbolId": "king",
+            "count": 5,
+            "multiplier": 22
+          },
+          {
+            "symbolId": "queen",
+            "count": 3,
+            "multiplier": 2
+          },
+          {
+            "symbolId": "queen",
+            "count": 4,
+            "multiplier": 6
+          },
+          {
+            "symbolId": "queen",
+            "count": 5,
+            "multiplier": 15
+          }
+        ]
+      }
+    ],
+    "scatterRules": [
+      {
+        "symbolId": "scatter",
+        "count": 3,
+        "multiplier": 3.0
+      }
+    ]
+  }
+}
