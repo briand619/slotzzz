@@ -205,13 +205,23 @@ public class SlotConfiguration
                     errors.Add($"Payline {payLine.Id}: row positions must be between 0 and {NumRows - 1}");
             }
 
-            if (payLine.Rules == null || payLine.Rules.Count == 0)
+            int ruleCount = (payLine.Rules?.Count ?? 0) + (payLine.KindRules?.Count ?? 0);
+            if (ruleCount == 0)
             {
                 errors.Add($"Payline {payLine.Id}: must define at least one rule");
                 continue;
             }
 
-            foreach (var rule in payLine.Rules)
+            foreach (var kindRule in payLine.KindRules ?? Enumerable.Empty<NOfAKindRule>())
+            {
+                if (kindRule.SymbolId == null || !symbolIds.Contains(kindRule.SymbolId))
+                    errors.Add($"Payline {payLine.Id}: kind rule references unknown symbol id '{kindRule.SymbolId}'");
+
+                if (kindRule.Count < 1 || kindRule.Count > payLine.ReelPositions.Count)
+                    errors.Add($"Payline {payLine.Id}: kind rule count {kindRule.Count} is outside the line's range of 1 to {payLine.ReelPositions.Count} positions");
+            }
+
+            foreach (var rule in payLine.Rules ?? Enumerable.Empty<PayLineRule>())
             {
                 if (rule.SymbolIds == null)
                 {

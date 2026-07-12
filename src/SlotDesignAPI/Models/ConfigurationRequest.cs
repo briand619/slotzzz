@@ -24,6 +24,13 @@ public class PayLineRuleDto
     public decimal Multiplier { get; set; }
 }
 
+public class NOfAKindRuleDto
+{
+    public string? SymbolId { get; set; }
+    public int Count { get; set; }
+    public decimal Multiplier { get; set; }
+}
+
 public class PayLineDto
 {
     public int Id { get; set; }
@@ -34,6 +41,11 @@ public class PayLineDto
     public List<int>? RowPositions { get; set; }
 
     public List<PayLineRuleDto>? Rules { get; set; }
+
+    /// <summary>Left-to-right N-of-a-kind rules: the first `count` positions of
+    /// the line must show the symbol (wilds substitute). May be combined with
+    /// exact-position rules; the highest-paying match wins.</summary>
+    public List<NOfAKindRuleDto>? KindRules { get; set; }
 }
 
 public class PaytableDto

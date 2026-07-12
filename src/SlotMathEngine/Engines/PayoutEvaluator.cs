@@ -44,6 +44,11 @@ public sealed class PayoutEvaluator
                 if (rule.Multiplier > bestMultiplier && RuleMatches(payLine, rule, grid))
                     bestMultiplier = rule.Multiplier;
             }
+            foreach (var rule in payLine.KindRules)
+            {
+                if (rule.Multiplier > bestMultiplier && KindRuleMatches(payLine, rule, grid))
+                    bestMultiplier = rule.Multiplier;
+            }
             totalPayout += _config.Paytable.BaseWager * bestMultiplier;
         }
 
@@ -72,6 +77,28 @@ public sealed class PayoutEvaluator
                 return false;
 
             if (!SymbolMatches(grid[reelIndex][rowIndex], rule.SymbolIds[i]))
+                return false;
+        }
+
+        return true;
+    }
+
+    public bool KindRuleMatches(PayLine payLine, NOfAKindRule rule, string[][] grid)
+    {
+        if (rule.Count < 1 || rule.Count > payLine.ReelPositions.Count)
+            return false;
+
+        for (int i = 0; i < rule.Count; i++)
+        {
+            int reelIndex = payLine.ReelPositions[i];
+            if (reelIndex < 0 || reelIndex >= grid.Length)
+                return false;
+
+            int rowIndex = payLine.RowAt(i);
+            if (rowIndex < 0 || rowIndex >= grid[reelIndex].Length)
+                return false;
+
+            if (!SymbolMatches(grid[reelIndex][rowIndex], rule.SymbolId))
                 return false;
         }
 

@@ -124,6 +124,30 @@ public static class TestConfigs
     }
 
     /// <summary>
+    /// A five-reel game paying left-to-right N-of-a-kind with a wild:
+    /// shared weights a:4, b:3, wild:1, one payline across all five reels,
+    /// tiers for 3/4/5 of a kind.
+    /// </summary>
+    public static SlotConfiguration CreateFiveReelKindConfig()
+    {
+        var config = new SlotConfiguration("Five Reel Kind Slot", 5);
+        config.Symbols.Add(new Symbol("a", "Symbol A", 4m));
+        config.Symbols.Add(new Symbol("b", "Symbol B", 3m));
+        config.Symbols.Add(new Symbol("w", "Wild", 1m) { IsWild = true });
+
+        var line = new PayLine(0, new List<int> { 0, 1, 2, 3, 4 });
+        line.KindRules.Add(new NOfAKindRule("a", 3, 2m));
+        line.KindRules.Add(new NOfAKindRule("a", 4, 5m));
+        line.KindRules.Add(new NOfAKindRule("a", 5, 15m));
+        line.KindRules.Add(new NOfAKindRule("b", 3, 4m));
+        line.KindRules.Add(new NOfAKindRule("b", 4, 10m));
+        line.KindRules.Add(new NOfAKindRule("b", 5, 30m));
+        config.Paytable.PayLines.Add(line);
+
+        return config;
+    }
+
+    /// <summary>
     /// A 3×3 grid: three reels with 8-stop ordered strips, three paylines
     /// (top row, middle row, and a down diagonal), triple-match rules.
     /// </summary>

@@ -138,6 +138,17 @@ public class SlotAnalysisService : ISlotAnalysisService
                         }
                     }
 
+                    if (payLineDto.KindRules != null)
+                    {
+                        foreach (var kindRuleDto in payLineDto.KindRules)
+                        {
+                            payLine.KindRules.Add(new NOfAKindRule(
+                                kindRuleDto.SymbolId ?? string.Empty,
+                                kindRuleDto.Count,
+                                kindRuleDto.Multiplier));
+                        }
+                    }
+
                     config.Paytable.PayLines.Add(payLine);
                 }
             }
