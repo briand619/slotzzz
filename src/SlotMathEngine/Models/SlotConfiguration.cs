@@ -29,6 +29,10 @@ public class SlotConfiguration
     /// coin symbols landing anywhere on the base-game grid.</summary>
     public HoldAndSpinFeature? HoldAndSpin { get; set; }
 
+    /// <summary>Optional free-spins bonus, triggered by scatter-marked symbols
+    /// landing anywhere on the base-game grid.</summary>
+    public FreeSpinsFeature? FreeSpins { get; set; }
+
     public SlotConfiguration(string name, int numReels)
     {
         Name = name;
@@ -183,6 +187,25 @@ public class SlotConfiguration
 
             if (HoldAndSpin.GrandMultiplier < 0)
                 errors.Add("Hold-and-spin: grand multiplier cannot be negative");
+        }
+
+        if (FreeSpins != null)
+        {
+            var triggerSymbol = Symbols.FirstOrDefault(s => s.Id == FreeSpins.TriggerSymbolId);
+            if (triggerSymbol == null)
+                errors.Add($"Free spins: references unknown trigger symbol id '{FreeSpins.TriggerSymbolId}'");
+            else if (!triggerSymbol.IsScatter)
+                errors.Add($"Free spins: trigger symbol '{FreeSpins.TriggerSymbolId}' must be marked as a scatter (triggers count anywhere and wilds must not substitute for them)");
+
+            int gridCells = NumReels * NumRows;
+            if (FreeSpins.TriggerCount < 1 || FreeSpins.TriggerCount > gridCells)
+                errors.Add($"Free spins: trigger count {FreeSpins.TriggerCount} is outside the grid's range of 1 to {gridCells} cells");
+
+            if (FreeSpins.SpinsAwarded < 1)
+                errors.Add("Free spins: spins awarded must be at least 1");
+
+            if (FreeSpins.WinMultiplier <= 0)
+                errors.Add("Free spins: win multiplier must be positive");
         }
 
         foreach (var payLine in Paytable.PayLines)

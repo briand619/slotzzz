@@ -235,6 +235,41 @@ postMessage for iframe embedding. See `frontend/video-poker/README.md` for
 the full API, and run its engine tests with
 `node frontend/video-poker/test/engine.test.js`.
 
+## Free Spins (with retriggers)
+
+Add a `freeSpins` block to award a free-spins bonus when trigger symbols land
+anywhere on the base grid:
+
+```json
+"freeSpins": {
+  "triggerSymbolId": "scatter",
+  "triggerCount": 3,
+  "spinsAwarded": 8,
+  "winMultiplier": 2.0,
+  "allowRetrigger": true
+}
+```
+
+Free spins run on the same reels and paytable, every win is multiplied by
+`winMultiplier`, and spins cost nothing. With `allowRetrigger`, landing the
+trigger again during a free spin awards `spinsAwarded` more. The trigger symbol
+must be marked `isScatter`, and the hold-and-spin feature does not trigger
+during free spins. A spin that triggers a bonus counts as a hit even if the
+bonus ultimately pays zero.
+
+The math stays **exact** even with retriggers: the feature is a branching
+(Galton–Watson) process, and its award mean and second moment have closed
+forms from per-spin enumeration statistics — E[T] = E[P]/(1 − F·q) for the
+per-spin subtree, with a matching second-moment recursion (P the multiplied
+per-spin payout, q the retrigger probability, F the spins per trigger). A
+configuration whose expected retriggers per spin reach 1 has infinite expected
+spins and is rejected with an explanatory error; the simulator plays the
+feature as an actual retrigger loop and cross-validates the closed forms.
+
+See `examples/free-spins-slot.json` — the 5×3 video slot with an 8-spin ×2
+retriggering bonus (theoretical RTP ≈ 94.46%, expected ~10.2 free spins per
+trigger).
+
 ## How the Math Works
 
 All theoretical metrics come from `TheoreticalAnalyzer`, which enumerates every

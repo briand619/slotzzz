@@ -91,6 +91,15 @@ public class HoldAndSpinDto
     public decimal GrandMultiplier { get; set; }
 }
 
+public class FreeSpinsDto
+{
+    public string? TriggerSymbolId { get; set; }
+    public int TriggerCount { get; set; }
+    public int SpinsAwarded { get; set; }
+    public decimal WinMultiplier { get; set; } = 1m;
+    public bool AllowRetrigger { get; set; } = true;
+}
+
 public class SlotConfigurationRequest
 {
     public string? Name { get; set; }
@@ -110,6 +119,9 @@ public class SlotConfigurationRequest
 
     /// <summary>Optional Lightning Link–style hold-and-spin bonus.</summary>
     public HoldAndSpinDto? HoldAndSpin { get; set; }
+
+    /// <summary>Optional free-spins bonus with retriggers.</summary>
+    public FreeSpinsDto? FreeSpins { get; set; }
 }
 
 public class CalculationRequest

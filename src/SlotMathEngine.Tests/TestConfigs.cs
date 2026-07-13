@@ -148,6 +148,32 @@ public static class TestConfigs
     }
 
     /// <summary>
+    /// A free-spins game: 3 reels, shared weights a:3, b:2, scatter:1, one
+    /// payline, 3 free spins at ×2 on 2+ scatters with retriggers
+    /// (expected offspring 3 · 2/27 ≈ 0.22, safely subcritical).
+    /// </summary>
+    public static SlotConfiguration CreateFreeSpinsConfig()
+    {
+        var config = new SlotConfiguration("Free Spins Slot", 3);
+        config.Symbols.Add(new Symbol("a", "Symbol A", 3m));
+        config.Symbols.Add(new Symbol("b", "Symbol B", 2m));
+        config.Symbols.Add(new Symbol("s", "Scatter", 1m) { IsScatter = true });
+
+        var line = new PayLine(0, new List<int> { 0, 1, 2 });
+        line.Rules.Add(new PayLineRule(new List<string> { "a", "a", "a" }, 5m));
+        line.Rules.Add(new PayLineRule(new List<string> { "b", "b", "b" }, 10m));
+        config.Paytable.PayLines.Add(line);
+
+        config.FreeSpins = new FreeSpinsFeature("s", 2, 3)
+        {
+            WinMultiplier = 2m,
+            AllowRetrigger = true
+        };
+
+        return config;
+    }
+
+    /// <summary>
     /// A 3×3 grid: three reels with 8-stop ordered strips, three paylines
     /// (top row, middle row, and a down diagonal), triple-match rules.
     /// </summary>

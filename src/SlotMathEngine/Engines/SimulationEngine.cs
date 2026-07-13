@@ -68,32 +68,43 @@ public class SimulationEngine
 
         for (int spin = 0; spin < numSpins; spin++)
         {
-            for (int reel = 0; reel < config.NumReels; reel++)
-            {
-                var strip = strips[reel];
-                int stop = DrawStopIndex(cumulativeTables[reel]);
-                for (int row = 0; row < config.NumRows; row++)
-                    grid[reel][row] = strip[(stop + row) % strip.Count].SymbolId;
-            }
+            SpinGrid(config, strips, cumulativeTables, grid);
 
             decimal payout = evaluator.EvaluatePayout(grid);
 
+            bool holdTriggered = false;
             if (config.HoldAndSpin != null)
             {
                 int coins = PayoutEvaluator.CountOnGrid(config.HoldAndSpin.CoinSymbolId, grid);
                 if (coins >= config.HoldAndSpin.TriggerCount)
+                {
+                    holdTriggered = true;
                     payout += PlayHoldAndSpin(config, coins, coinValueCumulative!);
+                }
             }
+
+            // Check the free-spins trigger before playing them: the free spins
+            // reuse the grid buffer.
+            bool freeSpinsTriggered = config.FreeSpins != null
+                && PayoutEvaluator.CountOnGrid(config.FreeSpins.TriggerSymbolId, grid) >= config.FreeSpins.TriggerCount;
+            if (freeSpinsTriggered)
+                payout += PlayFreeSpins(config, evaluator, strips, cumulativeTables, grid);
 
             totalWon += payout;
             sumOfSquares += payout * payout;
 
-            if (payout > 0)
+            // A spin counts as a hit when it pays or triggers a bonus (a
+            // triggered free-spins feature can still award zero), matching
+            // TheoreticalAnalyzer's hit-frequency definition.
+            if (payout > 0 || holdTriggered || freeSpinsTriggered)
             {
-                if (winningSpins == 0 || payout < minWin)
-                    minWin = payout;
-                if (payout > maxWin)
-                    maxWin = payout;
+                if (payout > 0)
+                {
+                    if (maxWin == 0 || payout < minWin)
+                        minWin = payout;
+                    if (payout > maxWin)
+                        maxWin = payout;
+                }
                 winningSpins++;
             }
         }
@@ -113,6 +124,56 @@ public class SimulationEngine
             ActualRTP = totalWon / totalWagered,
             ActualVariance = sumOfSquares / numSpins - meanPayout * meanPayout
         };
+    }
+
+    private void SpinGrid(
+        SlotConfiguration config,
+        IReadOnlyList<IReadOnlyList<ReelStop>> strips,
+        decimal[][] cumulativeTables,
+        string[][] grid)
+    {
+        for (int reel = 0; reel < config.NumReels; reel++)
+        {
+            var strip = strips[reel];
+            int stop = DrawStopIndex(cumulativeTables[reel]);
+            for (int row = 0; row < config.NumRows; row++)
+                grid[reel][row] = strip[(stop + row) % strip.Count].SymbolId;
+        }
+    }
+
+    private decimal PlayFreeSpins(
+        SlotConfiguration config,
+        PayoutEvaluator evaluator,
+        IReadOnlyList<IReadOnlyList<ReelStop>> strips,
+        decimal[][] cumulativeTables,
+        string[][] grid)
+    {
+        var feature = config.FreeSpins!;
+
+        // Safety valve: a configuration whose expected retriggers per spin reach
+        // 1 diverges (the exact analyzer rejects it); cap the loop so a
+        // simulation of such a config cannot hang.
+        const int maxFeatureSpins = 100_000;
+
+        decimal award = 0;
+        int spinsRemaining = feature.SpinsAwarded;
+        int spinsPlayed = 0;
+
+        while (spinsRemaining > 0 && spinsPlayed < maxFeatureSpins)
+        {
+            SpinGrid(config, strips, cumulativeTables, grid);
+            spinsPlayed++;
+
+            award += feature.WinMultiplier * evaluator.EvaluatePayout(grid);
+
+            if (feature.AllowRetrigger
+                && PayoutEvaluator.CountOnGrid(feature.TriggerSymbolId, grid) >= feature.TriggerCount)
+                spinsRemaining += feature.SpinsAwarded;
+
+            spinsRemaining--;
+        }
+
+        return award;
     }
 
     private decimal PlayHoldAndSpin(SlotConfiguration config, int initialCoins, decimal[] coinValueCumulative)

@@ -174,6 +174,18 @@ public class SlotAnalysisService : ISlotAnalysisService
             config.HoldAndSpin = feature;
         }
 
+        if (request.FreeSpins != null)
+        {
+            config.FreeSpins = new FreeSpinsFeature(
+                request.FreeSpins.TriggerSymbolId ?? string.Empty,
+                request.FreeSpins.TriggerCount,
+                request.FreeSpins.SpinsAwarded)
+            {
+                WinMultiplier = request.FreeSpins.WinMultiplier,
+                AllowRetrigger = request.FreeSpins.AllowRetrigger
+            };
+        }
+
         config.EnsureValid();
         return config;
     }
