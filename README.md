@@ -220,6 +220,17 @@ cross-validate the chain.
 See `examples/hold-and-spin-slot.json` (theoretical RTP ≈ 94.61%, hit
 frequency ≈ 20.30%, grand pays 150× total stake).
 
+## Video Poker Trainer (Frontend)
+
+`frontend/video-poker/` contains a self-contained, no-build video poker
+trainer styled after IGT Game King machines — 9/6 Jacks or Better with exact
+expected-value analysis of all 32 hold combinations on every deal, optimal-play
+grading, hints, and a ranked EV panel. Hands can be fed to it three ways:
+URL parameters (`index.html?hand=AS,KS,QS,JS,9S&draw=10S`), a JavaScript API
+(`trainer.dealHand(['AS','KS','QS','JS','9D'])`), or postMessage for iframe
+embedding. See `frontend/video-poker/README.md` for the full API, and run its
+engine tests with `node frontend/video-poker/test/engine.test.js`.
+
 ## How the Math Works
 
 All theoretical metrics come from `TheoreticalAnalyzer`, which enumerates every
