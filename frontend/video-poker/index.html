@@ -20,10 +20,11 @@
 
   var trainer = VideoPokerTrainer.create(document.getElementById('game'), {
     credits: params.has('credits') ? Number(params.get('credits')) : 400,
-    bet: params.has('bet') ? Number(params.get('bet')) : 5
+    bet: params.has('bet') ? Number(params.get('bet')) : 5,
+    paytable: params.get('game') || undefined
   });
 
-  // URL API: index.html?hand=AS,KS,QS,JS,9D&draw=10S&bet=5&credits=1000
+  // URL API: index.html?game=deuces-wild-nsu-100&hand=2S,KS,QS,JS,9D&draw=10S&bet=5&credits=1000
   if (params.has('draw')) trainer.setDrawCards(params.get('draw'));
   if (params.has('hand')) trainer.dealHand(params.get('hand'));
 
@@ -41,6 +42,7 @@
         case 'vpt:queueHand': trainer.queueHand(msg.cards); break;
         case 'vpt:setDrawCards': trainer.setDrawCards(msg.cards); break;
         case 'vpt:setBet': trainer.setBet(msg.bet); break;
+        case 'vpt:setGame': trainer.setGame(msg.game); break;
         case 'vpt:addCredits': trainer.addCredits(msg.amount); break;
         case 'vpt:deal': trainer.deal(); break;
         case 'vpt:draw': trainer.draw(); break;

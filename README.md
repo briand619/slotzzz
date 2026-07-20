@@ -223,13 +223,17 @@ frequency ≈ 20.30%, grand pays 150× total stake).
 ## Video Poker Trainer (Frontend)
 
 `frontend/video-poker/` contains a self-contained, no-build video poker
-trainer styled after IGT Game King machines — 9/6 Jacks or Better with exact
-expected-value analysis of all 32 hold combinations on every deal, optimal-play
-grading, hints, and a ranked EV panel. Hands can be fed to it three ways:
-URL parameters (`index.html?hand=AS,KS,QS,JS,9S&draw=10S`), a JavaScript API
-(`trainer.dealHand(['AS','KS','QS','JS','9D'])`), or postMessage for iframe
-embedding. See `frontend/video-poker/README.md` for the full API, and run its
-engine tests with `node frontend/video-poker/test/engine.test.js`.
+trainer styled after IGT Game King machines, with eight switchable games —
+Jacks or Better, Bonus Poker, Bonus Poker Deluxe, Double Double Bonus, Triple
+Double Bonus, Triple Triple Bonus, Deuces Wild, and Jokers Wild — each with
+exact expected-value analysis of all 32 hold combinations on every deal
+(including wild-card hands), optimal-play grading, hints, and a ranked EV
+panel. Hands can be fed to it three ways: URL parameters
+(`index.html?game=deuces-wild-nsu-100&hand=2S,KS,QS,JS,9D&draw=10S`), a
+JavaScript API (`trainer.dealHand(['AS','KS','QS','JS','9D'])`), or
+postMessage for iframe embedding. See `frontend/video-poker/README.md` for
+the full API, and run its engine tests with
+`node frontend/video-poker/test/engine.test.js`.
 
 ## How the Math Works
 

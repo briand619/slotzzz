@@ -135,4 +135,153 @@ test('analysis of a full hand is fast enough for interactive use', () => {
   assert.ok(ms < 5000, 'analysis took ' + ms + ' ms');
 });
 
+/* ---------------- Bonus Poker family: quad-kicker tiers ---------------- */
+
+const BP = E.PAYTABLES['bonus-poker-8-5'];
+const BPD = E.PAYTABLES['bonus-poker-deluxe-9-6'];
+const DDB = E.PAYTABLES['double-double-bonus-9-6'];
+const TDB = E.PAYTABLES['triple-double-bonus-9-7'];
+const TTB = E.PAYTABLES['triple-triple-bonus'];
+
+test('Bonus Poker rank-tier quads: aces / 2-4 / 5-K each pay differently', () => {
+  const C = E.CATEGORY;
+  assert.strictEqual(E.resolveCategory(hand('AS AH AD AC 7H'), BP), C.FOUR_ACES);
+  assert.strictEqual(E.resolveCategory(hand('3S 3H 3D 3C 7H'), BP), C.FOUR_LOW);
+  assert.strictEqual(E.resolveCategory(hand('9S 9H 9D 9C 7H'), BP), C.FOUR_5_TO_K);
+  assert.strictEqual(E.payout(C.FOUR_ACES, 1, BP), 80);
+  assert.strictEqual(E.payout(C.FOUR_LOW, 1, BP), 40);
+  assert.strictEqual(E.payout(C.FOUR_5_TO_K, 1, BP), 25);
+  // Kicker never matters for Bonus Poker's tiers.
+  assert.strictEqual(E.resolveCategory(hand('AS AH AD AC 2H'), BP), C.FOUR_ACES);
+});
+
+test('Bonus Poker Deluxe pays every quad flat, no rank tiers', () => {
+  const C = E.CATEGORY;
+  assert.strictEqual(E.resolveCategory(hand('AS AH AD AC 7H'), BPD), C.FOUR_OF_A_KIND);
+  assert.strictEqual(E.resolveCategory(hand('3S 3H 3D 3C 7H'), BPD), C.FOUR_OF_A_KIND);
+  assert.strictEqual(E.payout(C.FOUR_OF_A_KIND, 1, BPD), 80);
+});
+
+test('Double Double Bonus: kicker rank splits both the ace and low quad tiers', () => {
+  const C = E.CATEGORY;
+  assert.strictEqual(E.resolveCategory(hand('AS AH AD AC 3H'), DDB), C.FOUR_ACES_KICKER); // kicker 2/3/4
+  assert.strictEqual(E.resolveCategory(hand('AS AH AD AC 7H'), DDB), C.FOUR_ACES); // other kicker
+  assert.strictEqual(E.resolveCategory(hand('3S 3H 3D 3C AH'), DDB), C.FOUR_LOW_KICKER); // kicker A/2/3/4
+  assert.strictEqual(E.resolveCategory(hand('3S 3H 3D 3C 7H'), DDB), C.FOUR_LOW);
+  assert.strictEqual(E.resolveCategory(hand('9S 9H 9D 9C AH'), DDB), C.FOUR_5_TO_K); // no kicker tier for 5-K
+  assert.strictEqual(E.payout(C.FOUR_ACES_KICKER, 1, DDB), 400);
+  assert.strictEqual(E.payout(C.FOUR_LOW_KICKER, 1, DDB), 160);
+});
+
+test('Triple Double and Triple Triple Bonus use the same kicker mechanic with bigger pays', () => {
+  const C = E.CATEGORY;
+  const h = hand('AS AH AD AC 4H');
+  assert.strictEqual(E.resolveCategory(h, TDB), C.FOUR_ACES_KICKER);
+  assert.strictEqual(E.resolveCategory(h, TTB), C.FOUR_ACES_KICKER);
+  assert.ok(E.payout(C.FOUR_ACES_KICKER, 1, TDB) > E.payout(C.FOUR_ACES_KICKER, 1, DDB));
+  assert.ok(E.payout(C.FOUR_ACES_KICKER, 1, TTB) > E.payout(C.FOUR_ACES_KICKER, 1, TDB));
+});
+
+test('EV analysis runs cleanly on every standard-family paytable', () => {
+  const h = hand('AS AH KD QC JH');
+  [JOB, BP, BPD, DDB, TDB, TTB].forEach((pt) => {
+    const results = E.analyzeHolds(h, 5, pt);
+    assert.strictEqual(results.length, 32);
+    assert.ok(results[0].ev >= results[31].ev);
+  });
+});
+
+/* ---------------- Deuces Wild ---------------- */
+
+const DEUCES = E.PAYTABLES['deuces-wild-nsu-100'];
+
+test('Deuces Wild: four deuces beats everything, regardless of the 5th card', () => {
+  assert.strictEqual(E.resolveCategory(hand('2S 2H 2D 2C AH'), DEUCES), E.CATEGORY.FOUR_DEUCES);
+});
+
+test('Deuces Wild: natural royal vs wild royal are distinguished', () => {
+  assert.strictEqual(E.resolveCategory(hand('AS KS QS JS 10S'), DEUCES), E.CATEGORY.ROYAL_FLUSH);
+  assert.strictEqual(E.resolveCategory(hand('AS KS QS JS 2S'), DEUCES), E.CATEGORY.WILD_ROYAL_FLUSH);
+  assert.strictEqual(E.resolveCategory(hand('AS KS QS 2S 2H'), DEUCES), E.CATEGORY.WILD_ROYAL_FLUSH);
+});
+
+test('Deuces Wild: five of a kind from natural trip/quad plus deuces', () => {
+  assert.strictEqual(E.resolveCategory(hand('7S 7H 7D 2C 2H'), DEUCES), E.CATEGORY.FIVE_OF_A_KIND);
+  assert.strictEqual(E.resolveCategory(hand('7S 7H 7D 7C 2H'), DEUCES), E.CATEGORY.FIVE_OF_A_KIND);
+});
+
+test('Deuces Wild: a deuce completes a straight flush, not just a flush', () => {
+  // 3-4-5-6 of spades plus a deuce completes 3-4-5-6-7 straight flush (deuce plays as the 7).
+  assert.strictEqual(E.resolveCategory(hand('3S 4S 5S 6S 2H'), DEUCES), E.CATEGORY.STRAIGHT_FLUSH);
+  // Same ranks but off-suit deuce cannot complete the flush -> still a straight flush is impossible,
+  // falls back to straight since suits mismatch only among naturals which are already all spades;
+  // use a genuinely suit-breaking example instead: four different suits, no way to flush.
+  assert.strictEqual(E.resolveCategory(hand('3S 4H 5D 6C 2S'), DEUCES), E.CATEGORY.STRAIGHT);
+});
+
+test('Deuces Wild: two natural pairs plus a deuce is a full house, not two pair', () => {
+  assert.strictEqual(E.resolveCategory(hand('7S 7H KD KC 2H'), DEUCES), E.CATEGORY.FULL_HOUSE);
+});
+
+test('Deuces Wild: no deuces falls back to the plain evaluator, and pairs pay nothing', () => {
+  const C = E.CATEGORY;
+  assert.strictEqual(E.resolveCategory(hand('7S 7H KD QC JH'), DEUCES), C.NOTHING); // pair
+  assert.strictEqual(E.resolveCategory(hand('7S 7H KD KC QH'), DEUCES), C.NOTHING); // two pair
+  assert.strictEqual(E.resolveCategory(hand('AS AH AD KC QH'), DEUCES), C.THREE_OF_A_KIND);
+  assert.strictEqual(E.payout(C.NOTHING, 5, DEUCES), 0);
+});
+
+test('Deuces Wild EV: pat natural royal is the clear best hold', () => {
+  const results = E.analyzeHolds(hand('AS KS QS JS 10S'), 5, DEUCES);
+  assert.strictEqual(results[0].mask, 31);
+  assert.strictEqual(results[0].ev, 1250);
+});
+
+/* ---------------- Jokers Wild ---------------- */
+
+const JOKERS = E.PAYTABLES['jokers-wild-kings-or-better'];
+
+test('Jokers Wild: joker token parses and completes hands as a wild', () => {
+  const h = hand('AS AH AD JOKER 7H');
+  assert.strictEqual(h[3], E.JOKER);
+  assert.strictEqual(E.resolveCategory(h, JOKERS), E.CATEGORY.FOUR_OF_A_KIND);
+  const h2 = E.parseHand(['AS', 'AH', 'AD', 'JK', '7H']);
+  assert.strictEqual(E.resolveCategory(h2, JOKERS), E.CATEGORY.FOUR_OF_A_KIND);
+});
+
+test('Jokers Wild: natural royal vs wild royal, and five of a kind', () => {
+  assert.strictEqual(E.resolveCategory(hand('AS KS QS JS 10S'), JOKERS), E.CATEGORY.ROYAL_FLUSH);
+  assert.strictEqual(E.resolveCategory(hand('AS KS QS JS JOKER'), JOKERS), E.CATEGORY.WILD_ROYAL_FLUSH);
+  assert.strictEqual(E.resolveCategory(hand('7S 7H 7D 7C JOKER'), JOKERS), E.CATEGORY.FIVE_OF_A_KIND);
+});
+
+test('Jokers Wild: Kings-or-better threshold excludes Jacks and Queens', () => {
+  const C = E.CATEGORY;
+  assert.strictEqual(E.resolveCategory(hand('KS KH 7D 4C 2H'), JOKERS), C.KINGS_OR_BETTER);
+  assert.strictEqual(E.resolveCategory(hand('AS AH 7D 4C 2H'), JOKERS), C.KINGS_OR_BETTER);
+  assert.strictEqual(E.resolveCategory(hand('JS JH 7D 4C 2H'), JOKERS), C.NOTHING);
+  assert.strictEqual(E.resolveCategory(hand('QS QH 7D 4C 2H'), JOKERS), C.NOTHING);
+  // Joker pairs with a lone King to still qualify.
+  assert.strictEqual(E.resolveCategory(hand('KS 7D 4C 2H JOKER'), JOKERS), C.KINGS_OR_BETTER);
+  // Joker pairs with a lone Jack: does not qualify.
+  assert.strictEqual(E.resolveCategory(hand('JS 7D 4C 2H JOKER'), JOKERS), C.NOTHING);
+});
+
+test('Jokers Wild: two natural pairs plus the joker is a full house', () => {
+  assert.strictEqual(E.resolveCategory(hand('7S 7H KD KC JOKER'), JOKERS), E.CATEGORY.FULL_HOUSE);
+});
+
+test('Jokers Wild EV: pat natural royal is the clear best hold', () => {
+  const results = E.analyzeHolds(hand('AS KS QS JS 10S'), 5, JOKERS);
+  assert.strictEqual(results[0].mask, 31);
+  assert.strictEqual(results[0].ev, 1250);
+});
+
+test('Jokers Wild deck includes the joker for draws', () => {
+  const h = hand('AS KS QS JS 9H');
+  const deck = E.remainingDeck(h, true);
+  assert.strictEqual(deck.length, 48); // 53 - 5
+  assert.ok(deck.includes(E.JOKER));
+});
+
 console.log(passed + ' tests passed');

@@ -18,12 +18,27 @@
 
   var EV_EPSILON = 1e-9;
 
+  /* Games offered by the built-in variant selector, in menu order. */
+  var GAME_LIST = [
+    { key: 'jacks-or-better-9-6', label: 'Jacks or Better' },
+    { key: 'bonus-poker-8-5', label: 'Bonus Poker' },
+    { key: 'bonus-poker-deluxe-9-6', label: 'Bonus Poker Deluxe' },
+    { key: 'double-double-bonus-9-6', label: 'Double Double Bonus' },
+    { key: 'triple-double-bonus-9-7', label: 'Triple Double Bonus' },
+    { key: 'triple-triple-bonus', label: 'Triple Triple Bonus' },
+    { key: 'deuces-wild-nsu-100', label: 'Deuces Wild' },
+    { key: 'jokers-wild-kings-or-better', label: 'Jokers Wild' }
+  ];
+
+  function resolvePaytable(spec) {
+    var paytable = typeof spec === 'object' && spec !== null ? spec : E.PAYTABLES[spec || 'jacks-or-better-9-6'];
+    if (!paytable) throw new Error('Unknown paytable: ' + spec);
+    return paytable;
+  }
+
   function create(container, options) {
     options = options || {};
-    var paytable = typeof options.paytable === 'object' && options.paytable !== null
-      ? options.paytable
-      : E.PAYTABLES[options.paytable || 'jacks-or-better-9-6'];
-    if (!paytable) throw new Error('Unknown paytable: ' + options.paytable);
+    var paytable = resolvePaytable(options.paytable);
 
     /* ---------- state ---------- */
     var state = {
@@ -65,7 +80,7 @@
       '    <div class="vpt-stats"></div>' +
       '  </div>' +
       '  <div class="vpt-status">' +
-      '    <span class="vpt-gamename"></span>' +
+      '    <select class="vpt-gameselect"></select>' +
       '    <span><span class="vpt-bet"></span>&nbsp;&nbsp;<span class="vpt-win"></span></span>' +
       '    <span class="vpt-credit"></span>' +
       '  </div>' +
@@ -89,7 +104,7 @@
       cards: root.querySelector('.vpt-cards'),
       verdict: root.querySelector('.vpt-verdict'),
       stats: root.querySelector('.vpt-stats'),
-      gamename: root.querySelector('.vpt-gamename'),
+      gameSelect: root.querySelector('.vpt-gameselect'),
       bet: root.querySelector('.vpt-bet'),
       win: root.querySelector('.vpt-win'),
       credit: root.querySelector('.vpt-credit'),
@@ -104,17 +119,35 @@
       slots: []
     };
 
-    el.gamename.textContent = paytable.name;
-
-    /* paytable rows */
-    paytable.rows.forEach(function (row) {
-      var tr = document.createElement('tr');
-      var cells = ['<td>' + row.label + '</td>'];
-      row.pays.forEach(function (p) { cells.push('<td>' + p + '</td>'); });
-      tr.innerHTML = cells.join('');
-      tr.dataset.category = row.category;
-      el.paytableBody.appendChild(tr);
+    /* variant selector */
+    GAME_LIST.forEach(function (g) {
+      var opt = document.createElement('option');
+      opt.value = g.key;
+      opt.textContent = g.label.toUpperCase();
+      el.gameSelect.appendChild(opt);
     });
+    if (paytable.id && GAME_LIST.some(function (g) { return g.key === paytable.id; })) {
+      el.gameSelect.value = paytable.id;
+    } else {
+      var customOpt = document.createElement('option');
+      customOpt.value = '__custom__';
+      customOpt.textContent = paytable.name;
+      el.gameSelect.appendChild(customOpt);
+      el.gameSelect.value = '__custom__';
+    }
+
+    function renderPaytableRows() {
+      el.paytableBody.innerHTML = '';
+      paytable.rows.forEach(function (row) {
+        var tr = document.createElement('tr');
+        var cells = ['<td>' + row.label + '</td>'];
+        row.pays.forEach(function (p) { cells.push('<td>' + p + '</td>'); });
+        tr.innerHTML = cells.join('');
+        tr.dataset.category = row.category;
+        el.paytableBody.appendChild(tr);
+      });
+    }
+    renderPaytableRows();
 
     /* card slots */
     for (var i = 0; i < 5; i++) {
@@ -131,6 +164,12 @@
     /* ---------- rendering ---------- */
 
     function renderCard(cardEl, card) {
+      if (E.isJoker(card)) {
+        cardEl.className = 'vpt-card vpt-joker';
+        cardEl.innerHTML =
+          '<div class="vpt-corner">JK<span>★</span></div><div class="vpt-face">JOKER</div>';
+        return;
+      }
       var suit = E.suitOf(card);
       var rank = E.rankOf(card);
       var glyph = E.SUIT_GLYPHS[suit];
@@ -278,13 +317,14 @@
       }
       state.credits -= state.bet;
       state.win = 0;
+      var includeJoker = paytable.deck === 53;
       state.hand = forced ? forced.slice() : null;
       if (!state.hand) {
-        var deck = E.shuffledDeck([]);
+        var deck = E.shuffledDeck([], undefined, includeJoker);
         state.hand = deck.slice(0, 5);
         state.drawStack = deck.slice(5);
       } else {
-        state.drawStack = E.shuffledDeck(state.hand);
+        state.drawStack = E.shuffledDeck(state.hand, undefined, includeJoker);
       }
       if (state.queuedDraw) {
         var forcedDraw = state.queuedDraw.filter(function (c) {
@@ -302,7 +342,7 @@
       state.lastVerdict = null;
       clearPayHighlight();
 
-      var dealtCat = E.evaluate(state.hand);
+      var dealtCat = E.resolveCategory(state.hand, paytable);
       if (dealtCat !== E.CATEGORY.NOTHING) {
         setMessage(E.CATEGORY_NAMES[dealtCat], 'info');
       } else {
@@ -339,7 +379,7 @@
       for (var i = 0; i < 5; i++) {
         if (!state.held[i]) state.hand[i] = state.drawStack[stackIdx++];
       }
-      var category = E.evaluate(state.hand);
+      var category = E.resolveCategory(state.hand, paytable);
       var won = E.payout(category, state.bet, paytable);
       state.credits += won;
       state.win = won;
@@ -476,6 +516,42 @@
         renderButtons();
         return api;
       },
+      /*
+       * Switch games (e.g. 'deuces-wild-nsu-100', or a custom paytable
+       * object). Credits carry over; the current hand, stats, and hint/
+       * analysis state reset since they are specific to the previous game.
+       */
+      setGame: function (spec) {
+        if (state.analysisJob) { state.analysisJob.cancel(); state.analysisJob = null; }
+        paytable = resolvePaytable(spec);
+        state.phase = 'attract';
+        state.hand = null;
+        state.drawStack = null;
+        state.queuedHand = null;
+        state.queuedDraw = null;
+        state.held = [false, false, false, false, false];
+        state.analysis = null;
+        state.win = 0;
+        state.lastVerdict = null;
+        state.stats = { hands: 0, optimal: 0, evLost: 0 };
+        if (paytable.id && GAME_LIST.some(function (g) { return g.key === paytable.id; })) {
+          el.gameSelect.value = paytable.id;
+        } else {
+          el.gameSelect.value = '__custom__';
+        }
+        renderPaytableRows();
+        clearPayHighlight();
+        setMessage('PLAY 1 TO 5 CREDITS', 'info');
+        el.verdict.textContent = '';
+        el.verdict.className = 'vpt-verdict';
+        el.analysisPanel.classList.remove('vpt-open');
+        renderHand();
+        renderStatus();
+        renderStats();
+        renderButtons();
+        emit('gamechange', { paytable: paytable.id || paytable.name });
+        return api;
+      },
       hint: function () { showHint(); return api; },
       /* Ranked exact EV of all 32 holds for the live hand (blocking). */
       analyze: function () {
@@ -492,6 +568,7 @@
       getState: function () {
         return {
           phase: state.phase,
+          paytable: paytable.id || paytable.name,
           hand: state.hand ? state.hand.map(E.cardToString) : null,
           held: state.held.slice(),
           bet: state.bet,
@@ -539,6 +616,9 @@
     });
     el.payToggle.addEventListener('click', function () {
       root.querySelector('.vpt-paytable').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+    el.gameSelect.addEventListener('change', function () {
+      if (el.gameSelect.value !== '__custom__') api.setGame(el.gameSelect.value);
     });
 
     if (options.keyboard !== false) {

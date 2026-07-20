@@ -187,6 +187,18 @@
 .vpt-card.vpt-redsuit { color: #d40000; }
 .vpt-card.vpt-blacksuit { color: #101010; }
 
+.vpt-card.vpt-joker {
+  color: #6a00a8;
+  background: linear-gradient(135deg, #fff 0%, #fff 60%, #f0e0ff 100%);
+}
+.vpt-card.vpt-joker .vpt-corner span { color: #d40000; }
+.vpt-card.vpt-joker .vpt-face {
+  font-size: 30px;
+  letter-spacing: 2px;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+}
+
 .vpt-slot.vpt-hint .vpt-card { outline: 4px solid var(--gk-cyan); outline-offset: -1px; }
 .vpt-slot.vpt-best .vpt-card { outline: 4px solid var(--gk-green); outline-offset: -1px; }
 
@@ -225,7 +237,20 @@
   text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.7);
 }
 
-.vpt-status .vpt-gamename { font-size: 16px; letter-spacing: 1px; color: var(--gk-yellow-dim); }
+.vpt-gameselect {
+  font-family: var(--gk-font);
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: var(--gk-yellow-dim);
+  background: #000040;
+  border: 1px solid var(--gk-yellow-dim);
+  border-radius: 4px;
+  padding: 3px 4px;
+  max-width: 42%;
+}
+
+.vpt-gameselect option { background: #000040; color: var(--gk-yellow); }
 
 /* ---------- Button deck ---------- */
 
