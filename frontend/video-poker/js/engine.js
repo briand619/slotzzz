@@ -49,7 +49,9 @@
     FOUR_DEUCES: 15,
     WILD_ROYAL_FLUSH: 16,
     FIVE_OF_A_KIND: 17,
-    KINGS_OR_BETTER: 18
+    KINGS_OR_BETTER: 18,
+    /* Triple Triple Bonus only: 4 2s/3s/4s with an Ace kicker matches the top Aces-w/-kicker tier. */
+    FOUR_LOW_ACE_KICKER: 19
   };
 
   var CATEGORY_NAMES = [];
@@ -72,6 +74,7 @@
   CATEGORY_NAMES[CATEGORY.WILD_ROYAL_FLUSH] = 'WILD ROYAL FLUSH';
   CATEGORY_NAMES[CATEGORY.FIVE_OF_A_KIND] = 'FIVE OF A KIND';
   CATEGORY_NAMES[CATEGORY.KINGS_OR_BETTER] = 'KINGS OR BETTER';
+  CATEGORY_NAMES[CATEGORY.FOUR_LOW_ACE_KICKER] = 'FOUR 2S-4S W/ACE';
 
   /*
    * Paytable "family" controls which evaluator resolveCategory() dispatches to:
@@ -197,13 +200,14 @@
       id: 'triple-triple-bonus',
       name: 'TRIPLE TRIPLE BONUS',
       family: 'standard',
-      quadRule: 'kicker-tier',
+      quadRule: 'kicker-tier-ttb',
       deck: 52,
       rows: [
         { category: CATEGORY.ROYAL_FLUSH, label: 'ROYAL FLUSH', pays: [250, 500, 750, 1000, 4000] },
         { category: CATEGORY.STRAIGHT_FLUSH, label: 'STRAIGHT FLUSH', pays: [50, 100, 150, 200, 250] },
         { category: CATEGORY.FOUR_ACES_KICKER, label: '4 ACES W/2-4', pays: [1200, 2400, 3600, 4800, 6000] },
-        { category: CATEGORY.FOUR_LOW_KICKER, label: '4 2-4 W/A-4', pays: [400, 800, 1200, 1600, 2000] },
+        { category: CATEGORY.FOUR_LOW_ACE_KICKER, label: '4 2-4 W/ACE', pays: [1200, 2400, 3600, 4800, 6000] },
+        { category: CATEGORY.FOUR_LOW_KICKER, label: '4 2-4 W/2-4', pays: [400, 800, 1200, 1600, 2000] },
         { category: CATEGORY.FOUR_ACES, label: '4 ACES', pays: [160, 320, 480, 640, 800] },
         { category: CATEGORY.FOUR_LOW, label: '4 2S, 3S OR 4S', pays: [80, 160, 240, 320, 400] },
         { category: CATEGORY.FOUR_5_TO_K, label: '4 5S THRU KS', pays: [50, 100, 150, 200, 250] },
@@ -424,8 +428,17 @@
       if (isLowQuad) return CATEGORY.FOUR_LOW;
       return CATEGORY.FOUR_5_TO_K;
     }
-    /* 'kicker-tier' */
     var bonusKicker = d.kickerRank === ACE_RANK || d.kickerRank <= 2;
+    if (rule === 'kicker-tier-ttb') {
+      /* Triple Triple Bonus: a low quad with an Ace kicker matches the top Aces-w/-kicker tier. */
+      if (isAceQuad) return bonusKicker ? CATEGORY.FOUR_ACES_KICKER : CATEGORY.FOUR_ACES;
+      if (isLowQuad) {
+        if (d.kickerRank === ACE_RANK) return CATEGORY.FOUR_LOW_ACE_KICKER;
+        return d.kickerRank <= 2 ? CATEGORY.FOUR_LOW_KICKER : CATEGORY.FOUR_LOW;
+      }
+      return CATEGORY.FOUR_5_TO_K;
+    }
+    /* 'kicker-tier' (Double Double Bonus, Triple Double Bonus) */
     if (isAceQuad) return bonusKicker ? CATEGORY.FOUR_ACES_KICKER : CATEGORY.FOUR_ACES;
     if (isLowQuad) return bonusKicker ? CATEGORY.FOUR_LOW_KICKER : CATEGORY.FOUR_LOW;
     return CATEGORY.FOUR_5_TO_K;

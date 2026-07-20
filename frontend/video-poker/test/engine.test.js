@@ -182,6 +182,22 @@ test('Triple Double and Triple Triple Bonus use the same kicker mechanic with bi
   assert.ok(E.payout(C.FOUR_ACES_KICKER, 1, TTB) > E.payout(C.FOUR_ACES_KICKER, 1, TDB));
 });
 
+test('Triple Triple Bonus only: a low quad with an Ace kicker matches the top Aces-kicker tier', () => {
+  const C = E.CATEGORY;
+  const lowQuadAceKicker = hand('3S 3H 3D 3C AH');
+  assert.strictEqual(E.resolveCategory(lowQuadAceKicker, TTB), C.FOUR_LOW_ACE_KICKER);
+  assert.strictEqual(E.payout(C.FOUR_LOW_ACE_KICKER, 1, TTB), E.payout(C.FOUR_ACES_KICKER, 1, TTB));
+  assert.strictEqual(E.payout(C.FOUR_LOW_ACE_KICKER, 5, TTB), E.payout(C.FOUR_ACES_KICKER, 5, TTB));
+  // A 2/3/4 kicker (not an Ace) stays in the ordinary, lower low-kicker tier.
+  const lowQuadLowKicker = hand('3S 3H 3D 3C 4H');
+  assert.strictEqual(E.resolveCategory(lowQuadLowKicker, TTB), C.FOUR_LOW_KICKER);
+  assert.ok(E.payout(C.FOUR_LOW_KICKER, 1, TTB) < E.payout(C.FOUR_LOW_ACE_KICKER, 1, TTB));
+  // Double Double and Triple Double Bonus do not have this special case: an
+  // Ace kicker on a low quad is just their ordinary bonus-kicker tier.
+  assert.strictEqual(E.resolveCategory(lowQuadAceKicker, DDB), C.FOUR_LOW_KICKER);
+  assert.strictEqual(E.resolveCategory(lowQuadAceKicker, TDB), C.FOUR_LOW_KICKER);
+});
+
 test('EV analysis runs cleanly on every standard-family paytable', () => {
   const h = hand('AS AH KD QC JH');
   [JOB, BP, BPD, DDB, TDB, TTB].forEach((pt) => {

@@ -25,16 +25,17 @@ marks the optimal hold, and the ANALYSIS panel shows the ranked EV table.
 This works identically across all eight games, including the wild-card ones —
 the EV math accounts for every way a deuce or Joker could complete a hand.
 
-> **Triple Triple Bonus caveat:** real-money Triple Triple Bonus Poker adds a
-> "kicker suited to the quad" super-tier on top of its rank/kicker tiers. That
-> specific suit-matching rule isn't reproduced here (the exact condition
-> varies enough across sources that reproducing it with confidence wasn't
-> possible); this implementation reuses the same rank/kicker-tier mechanic as
-> Double/Triple Double Bonus with its own pay amounts, giving it a distinct
-> feel without asserting an exact casino paytable. Deuces Wild and Jokers Wild
-> also pay their royal flush proportionally to bet (no 5-coin jackpot jump),
-> matching how those games are typically paid, unlike the Jacks-or-Better
-> family's 4000-coin jump.
+> **Triple Triple Bonus notes:** it includes the game's signature quirk where
+> a quad 2s/3s/4s with an **Ace** kicker matches the top "4 Aces w/2,3,4
+> kicker" tier exactly (its own `FOUR_LOW_ACE_KICKER` row) — a 2/3/4 kicker on
+> that same quad stays in the ordinary, lower kicker tier. What it does *not*
+> reproduce is real-money TTB's separate "kicker suited to the quad"
+> super-tier on top of that; the exact condition for that rule varies enough
+> across sources that reproducing it with confidence wasn't possible, so pay
+> amounts for the tiers modeled here are a reasonable approximation, not an
+> exact casino paytable. Deuces Wild and Jokers Wild pay their royal flush
+> proportionally to bet (no 5-coin jackpot jump), matching how those games
+> are typically paid, unlike the Jacks-or-Better family's 4000-coin jump.
 
 ## Running
 
