@@ -173,13 +173,15 @@ test('Double Double Bonus: kicker rank splits both the ace and low quad tiers', 
   assert.strictEqual(E.payout(C.FOUR_LOW_KICKER, 1, DDB), 160);
 });
 
-test('Triple Double and Triple Triple Bonus use the same kicker mechanic with bigger pays', () => {
+test('Triple Double and Triple Triple Bonus share the same kicker mechanic; TDB beats DDB', () => {
   const C = E.CATEGORY;
   const h = hand('AS AH AD AC 4H');
   assert.strictEqual(E.resolveCategory(h, TDB), C.FOUR_ACES_KICKER);
   assert.strictEqual(E.resolveCategory(h, TTB), C.FOUR_ACES_KICKER);
   assert.ok(E.payout(C.FOUR_ACES_KICKER, 1, TDB) > E.payout(C.FOUR_ACES_KICKER, 1, DDB));
-  assert.ok(E.payout(C.FOUR_ACES_KICKER, 1, TTB) > E.payout(C.FOUR_ACES_KICKER, 1, TDB));
+  // TDB and TTB cap the Aces-w/-kicker tier at the same 4000 max-bet award;
+  // TTB's distinguishing feature is the extra FOUR_LOW_ACE_KICKER tier below.
+  assert.strictEqual(E.payout(C.FOUR_ACES_KICKER, 5, TTB), E.payout(C.FOUR_ACES_KICKER, 5, TDB));
 });
 
 test('Triple Triple Bonus only: a low quad with an Ace kicker matches the top Aces-kicker tier', () => {

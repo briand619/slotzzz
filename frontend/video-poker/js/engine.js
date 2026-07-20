@@ -205,8 +205,8 @@
       rows: [
         { category: CATEGORY.ROYAL_FLUSH, label: 'ROYAL FLUSH', pays: [250, 500, 750, 1000, 4000] },
         { category: CATEGORY.STRAIGHT_FLUSH, label: 'STRAIGHT FLUSH', pays: [50, 100, 150, 200, 250] },
-        { category: CATEGORY.FOUR_ACES_KICKER, label: '4 ACES W/2-4', pays: [1200, 2400, 3600, 4800, 6000] },
-        { category: CATEGORY.FOUR_LOW_ACE_KICKER, label: '4 2-4 W/ACE', pays: [1200, 2400, 3600, 4800, 6000] },
+        { category: CATEGORY.FOUR_ACES_KICKER, label: '4 ACES W/2-4', pays: [800, 1600, 2400, 3200, 4000] },
+        { category: CATEGORY.FOUR_LOW_ACE_KICKER, label: '4 2-4 W/ACE', pays: [800, 1600, 2400, 3200, 4000] },
         { category: CATEGORY.FOUR_LOW_KICKER, label: '4 2-4 W/2-4', pays: [400, 800, 1200, 1600, 2000] },
         { category: CATEGORY.FOUR_ACES, label: '4 ACES', pays: [160, 320, 480, 640, 800] },
         { category: CATEGORY.FOUR_LOW, label: '4 2S, 3S OR 4S', pays: [80, 160, 240, 320, 400] },
