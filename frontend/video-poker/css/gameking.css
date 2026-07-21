@@ -190,7 +190,7 @@
 /* ---------- Wild deuce (Deuces Wild) ---------- */
 
 .vpt-card.vpt-wilddeuce {
-  background: linear-gradient(160deg, #fff9e0 0%, #ffe98a 45%, #ffc93f 100%);
+  background: #ffd23f;
   box-shadow: 0 0 0 3px #b8860b inset, 0 0 10px 1px rgba(255, 200, 40, 0.55), 3px 4px 0 rgba(0, 0, 0, 0.45);
 }
 .vpt-card.vpt-wilddeuce .vpt-corner,
@@ -220,7 +220,7 @@
 /* ---------- Joker (Jokers Wild) ---------- */
 
 .vpt-card.vpt-joker {
-  background: radial-gradient(ellipse at 50% 38%, #fff 0%, #fdf4ff 55%, #ecd8ff 100%);
+  background: #f5eaff;
   box-shadow: 0 0 0 3px #8b00c9 inset, 3px 4px 0 rgba(0, 0, 0, 0.45);
 }
 .vpt-card.vpt-joker .vpt-corner { color: #6a00a8; }
@@ -246,10 +246,7 @@
   font-weight: bold;
   font-size: 19px;
   letter-spacing: 3px;
-  background: linear-gradient(90deg, #8b00c9, #d4af00 50%, #c9004a);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #8b00c9;
 }
 .vpt-joker-stars {
   font-size: 12px;
