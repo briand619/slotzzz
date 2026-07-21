@@ -167,7 +167,8 @@
       if (E.isJoker(card)) {
         cardEl.className = 'vpt-card vpt-joker';
         cardEl.innerHTML =
-          '<div class="vpt-corner">JK<span>★</span></div><div class="vpt-face">JOKER</div>';
+          '<div class="vpt-corner">JKR</div>' +
+          '<div class="vpt-joker-face"><div class="vpt-joker-label">JOKER</div></div>';
         return;
       }
       var suit = E.suitOf(card);
@@ -175,12 +176,16 @@
       var glyph = E.SUIT_GLYPHS[suit];
       var rankChar = E.RANK_CHARS[rank];
       var red = suit === 1 || suit === 2;
+      var isWildDeuce = paytable.family === 'deuces' && rank === 0;
       cardEl.className = 'vpt-card ' + (red ? 'vpt-redsuit' : 'vpt-blacksuit');
       var center = rank >= 9 && rank <= 11
         ? '<div class="vpt-face">' + rankChar + '</div>'
         : '<div class="vpt-pip">' + glyph + '</div>';
+      var wildStack = isWildDeuce
+        ? '<div class="vpt-wildstack"><span>WILD</span><span>WILD</span><span>WILD</span><span>WILD</span></div>'
+        : '';
       cardEl.innerHTML =
-        '<div class="vpt-corner">' + rankChar + '<span>' + glyph + '</span></div>' + center;
+        '<div class="vpt-corner">' + rankChar + '<span>' + glyph + '</span></div>' + wildStack + center;
     }
 
     function renderHand() {

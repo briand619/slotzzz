@@ -195,16 +195,38 @@
 .vpt-card.vpt-redsuit { color: #d40000; }
 .vpt-card.vpt-blacksuit { color: #101010; }
 
-.vpt-card.vpt-joker {
-  color: #6a00a8;
-  background: linear-gradient(135deg, #fff 0%, #fff 60%, #f0e0ff 100%);
+/* Wild deuce (Deuces Wild): a fading "WILD" repeat beside the rank, matching
+   the real IGT card face — the rank/suit/pip layout is otherwise untouched. */
+.vpt-wildstack {
+  position: absolute;
+  top: 9px;
+  left: 40px;
+  font-weight: bold;
+  font-size: 15px;
+  line-height: 1.15;
+  letter-spacing: 0.5px;
+  color: #101010;
 }
-.vpt-card.vpt-joker .vpt-corner span { color: #d40000; }
-.vpt-card.vpt-joker .vpt-face {
+.vpt-wildstack span { display: block; }
+.vpt-wildstack span:nth-child(1) { opacity: 1; }
+.vpt-wildstack span:nth-child(2) { opacity: 0.55; }
+.vpt-wildstack span:nth-child(3) { opacity: 0.3; }
+.vpt-wildstack span:nth-child(4) { opacity: 0.15; }
+
+/* ---------- Joker (Jokers Wild) ---------- */
+
+.vpt-card.vpt-joker { color: #101010; }
+.vpt-joker-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.vpt-joker-label {
+  font-weight: bold;
   font-size: 30px;
-  letter-spacing: 2px;
-  writing-mode: vertical-rl;
-  text-orientation: upright;
+  letter-spacing: 1px;
 }
 
 .vpt-slot.vpt-hint .vpt-card { outline: 4px solid var(--gk-cyan); outline-offset: -1px; }
