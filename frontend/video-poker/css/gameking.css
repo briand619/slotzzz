@@ -187,16 +187,74 @@
 .vpt-card.vpt-redsuit { color: #d40000; }
 .vpt-card.vpt-blacksuit { color: #101010; }
 
-.vpt-card.vpt-joker {
-  color: #6a00a8;
-  background: linear-gradient(135deg, #fff 0%, #fff 60%, #f0e0ff 100%);
+/* ---------- Wild deuce (Deuces Wild) ---------- */
+
+.vpt-card.vpt-wilddeuce {
+  background: linear-gradient(160deg, #fff9e0 0%, #ffe98a 45%, #ffc93f 100%);
+  box-shadow: 0 0 0 3px #b8860b inset, 0 0 10px 1px rgba(255, 200, 40, 0.55), 3px 4px 0 rgba(0, 0, 0, 0.45);
 }
-.vpt-card.vpt-joker .vpt-corner span { color: #d40000; }
-.vpt-card.vpt-joker .vpt-face {
-  font-size: 30px;
-  letter-spacing: 2px;
-  writing-mode: vertical-rl;
-  text-orientation: upright;
+.vpt-card.vpt-wilddeuce .vpt-corner,
+.vpt-card.vpt-wilddeuce .vpt-pip {
+  color: #7a3e00;
+}
+.vpt-card.vpt-wilddeuce .vpt-corner span { color: #a01000; }
+.vpt-card.vpt-wilddeuce .vpt-pip {
+  font-size: 66px;
+  padding-top: 4px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  filter: drop-shadow(0 1px 2px rgba(122, 62, 0, 0.35));
+}
+.vpt-wildribbon {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: 3px;
+  color: #7a1a00;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+/* ---------- Joker (Jokers Wild) ---------- */
+
+.vpt-card.vpt-joker {
+  background: radial-gradient(ellipse at 50% 38%, #fff 0%, #fdf4ff 55%, #ecd8ff 100%);
+  box-shadow: 0 0 0 3px #8b00c9 inset, 3px 4px 0 rgba(0, 0, 0, 0.45);
+}
+.vpt-card.vpt-joker .vpt-corner { color: #6a00a8; }
+.vpt-card.vpt-joker .vpt-corner span { color: #d4af00; }
+.vpt-joker-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding-top: 14px;
+}
+.vpt-joker-icon {
+  font-size: 58px;
+  line-height: 1;
+  filter: drop-shadow(1px 3px 2px rgba(0, 0, 0, 0.3));
+}
+.vpt-joker-label {
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: bold;
+  font-size: 19px;
+  letter-spacing: 3px;
+  background: linear-gradient(90deg, #8b00c9, #d4af00 50%, #c9004a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.vpt-joker-stars {
+  font-size: 12px;
+  letter-spacing: 4px;
+  color: #d4af00;
 }
 
 .vpt-slot.vpt-hint .vpt-card { outline: 4px solid var(--gk-cyan); outline-offset: -1px; }
