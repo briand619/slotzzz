@@ -1,0 +1,49 @@
+@page "/"
+@rendermode InteractiveServer
+@inject DashboardQueries Queries
+
+<PageTitle>Used Goods Tracker</PageTitle>
+
+<h1>Used Goods Pricing Tracker</h1>
+<p class="text-muted">
+    Baseline pricing built from active eBay listings. Prices shown are current asking prices,
+    not confirmed sold prices &mdash; see the README for why.
+</p>
+
+@if (_summaries is null)
+{
+    <p><em>Loading&hellip;</em></p>
+}
+else if (_summaries.Count == 0)
+{
+    <div class="alert alert-info">
+        No listings yet. Once the ingestion worker has run at least one polling cycle, tracked
+        categories will appear here.
+    </div>
+}
+else
+{
+    <RadzenDataGrid Data="@_summaries" TItem="CategorySummary" AllowSorting="true">
+        <Columns>
+            <RadzenDataGridColumn TItem="CategorySummary" Property="CategoryName" Title="Category" />
+            <RadzenDataGridColumn TItem="CategorySummary" Property="ActiveListingCount" Title="Active Listings" />
+            <RadzenDataGridColumn TItem="CategorySummary" Property="AveragePrice" Title="Avg Price" FormatString="{0:C}" />
+            <RadzenDataGridColumn TItem="CategorySummary" Property="MinPrice" Title="Min Price" FormatString="{0:C}" />
+            <RadzenDataGridColumn TItem="CategorySummary" Property="MaxPrice" Title="Max Price" FormatString="{0:C}" />
+            <RadzenDataGridColumn TItem="CategorySummary" Title="" Sortable="false" Width="120px">
+                <Template Context="summary">
+                    <a class="btn btn-sm btn-primary" href="@($"/category/{summary.CategoryId}")">View trends</a>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    private List<CategorySummary>? _summaries;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _summaries = await Queries.GetCategorySummariesAsync();
+    }
+}

@@ -1,0 +1,96 @@
+@page "/category/{CategoryId:int}"
+@rendermode InteractiveServer
+@inject DashboardQueries Queries
+
+<PageTitle>@(_category?.Name ?? "Category")</PageTitle>
+
+<p><a href="/">&larr; Back to all categories</a></p>
+
+@if (_category is null)
+{
+    <p><em>Loading&hellip;</em></p>
+}
+else
+{
+    <h1>@_category.Name</h1>
+
+    <h3>Price trend (last 30 days)</h3>
+    @if (_priceTrend is { Count: > 1 })
+    {
+        <RadzenChart>
+            <RadzenLineSeries TItem="PriceTrendPoint" Data="@_priceTrend" CategoryProperty="Date" ValueProperty="AveragePrice" Title="Avg asking price">
+                <RadzenMarkers MarkerType="MarkerType.Circle" />
+            </RadzenLineSeries>
+            <RadzenCategoryAxis Formatter="@FormatDate" />
+            <RadzenValueAxis>
+                <RadzenAxisTitle Text="Average price ($)" />
+            </RadzenValueAxis>
+        </RadzenChart>
+    }
+    else
+    {
+        <p class="text-muted"><em>Not enough price history yet &mdash; check back after a few ingestion cycles.</em></p>
+    }
+
+    <h3>Listing volume by seller location</h3>
+    <p class="text-muted">
+        eBay only exposes seller location (not buyer demand), and often only country-level data,
+        so this is a coarse supply proxy rather than true demand-by-area.
+    </p>
+    @if (_areaDemand is { Count: > 0 })
+    {
+        <RadzenChart>
+            <RadzenColumnSeries TItem="AreaDemand" Data="@_areaDemand" CategoryProperty="Area" ValueProperty="ListingCount" Title="Listings" />
+            <RadzenCategoryAxis />
+            <RadzenValueAxis>
+                <RadzenAxisTitle Text="Listing count" />
+            </RadzenValueAxis>
+        </RadzenChart>
+    }
+    else
+    {
+        <p class="text-muted"><em>No state/province-level location data available yet.</em></p>
+    }
+
+    <h3>Recent listings</h3>
+    <RadzenDataGrid Data="@_listings" TItem="Listing" AllowSorting="true" AllowPaging="true" PageSize="20">
+        <Columns>
+            <RadzenDataGridColumn TItem="Listing" Title="Title">
+                <Template Context="listing">
+                    <a href="@listing.ItemWebUrl" target="_blank" rel="noopener">@listing.Title</a>
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="Listing" Property="Condition" Title="Condition" Width="140px" />
+            <RadzenDataGridColumn TItem="Listing" Property="Price" Title="Price" FormatString="{0:C}" Width="100px" />
+            <RadzenDataGridColumn TItem="Listing" Property="LocationStateOrProvince" Title="Location" Width="100px" />
+            <RadzenDataGridColumn TItem="Listing" Property="IsNoLongerActive" Title="Off market?" Width="100px" />
+            <RadzenDataGridColumn TItem="Listing" Property="LastSeenAt" Title="Last seen" Width="160px" FormatString="{0:g}" />
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    [Parameter]
+    public int CategoryId { get; set; }
+
+    private Category? _category;
+    private List<PriceTrendPoint>? _priceTrend;
+    private List<AreaDemand>? _areaDemand;
+    private List<Listing> _listings = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var categories = await Queries.GetCategoriesAsync();
+        _category = categories.FirstOrDefault(c => c.Id == CategoryId);
+        if (_category is null)
+        {
+            return;
+        }
+
+        _priceTrend = await Queries.GetPriceTrendAsync(CategoryId);
+        _areaDemand = await Queries.GetDemandByAreaAsync(CategoryId);
+        _listings = await Queries.GetRecentListingsAsync(CategoryId, take: 200);
+    }
+
+    private string FormatDate(object value) => value is DateTime dt ? dt.ToString("MMM d") : value?.ToString() ?? "";
+}
