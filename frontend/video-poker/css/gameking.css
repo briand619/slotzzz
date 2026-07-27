@@ -21,7 +21,7 @@
   background: #101018;
   color: var(--gk-yellow);
   width: 100%;
-  max-width: 960px;
+  max-width: 1100px;
   margin: 0 auto;
   border: 6px solid #202028;
   border-radius: 10px;
@@ -116,7 +116,7 @@
   padding: 2px 0 6px;
 }
 
-.vpt-slot { width: 122px; text-align: center; }
+.vpt-slot { width: 190px; text-align: center; }
 
 .vpt-heldtag {
   height: 26px;
@@ -132,8 +132,8 @@
 .vpt-slot.vpt-held .vpt-heldtag { visibility: visible; }
 
 .vpt-card {
-  width: 122px;
-  height: 168px;
+  width: 190px;
+  height: 250px;
   border-radius: 9px;
   background: var(--gk-white);
   border: 1px solid #666;
@@ -153,15 +153,15 @@
 
 .vpt-card .vpt-corner {
   position: absolute;
-  top: 5px;
-  left: 7px;
+  top: 6px;
+  left: 9px;
   text-align: center;
   font-weight: bold;
-  font-size: 30px;
+  font-size: 60px;
   line-height: 0.9;
 }
 
-.vpt-card .vpt-corner span { display: block; font-size: 26px; }
+.vpt-card .vpt-corner span { display: block; font-size: 52px; }
 
 .vpt-card .vpt-pip {
   position: absolute;
@@ -169,7 +169,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 78px;
+  font-size: 156px;
   padding-top: 12px;
 }
 
@@ -179,7 +179,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 84px;
+  font-size: 168px;
   font-weight: bold;
   padding-top: 10px;
 }
@@ -191,10 +191,10 @@
    the real IGT card face — the rank/suit/pip layout is otherwise untouched. */
 .vpt-wildstack {
   position: absolute;
-  top: 9px;
-  left: 40px;
+  top: 13px;
+  left: 66px;
   font-weight: bold;
-  font-size: 15px;
+  font-size: 22px;
   line-height: 1.15;
   letter-spacing: 0.5px;
   color: #101010;
@@ -217,8 +217,8 @@
 }
 .vpt-joker-label {
   font-weight: bold;
-  font-size: 30px;
-  letter-spacing: 1px;
+  font-size: 44px;
+  letter-spacing: 0;
 }
 
 .vpt-slot.vpt-hint .vpt-card { outline: 4px solid var(--gk-cyan); outline-offset: -1px; }
@@ -351,20 +351,3 @@
 .vpt-analysis tr.vpt-optimal td { color: var(--gk-green); font-weight: bold; }
 .vpt-analysis tr.vpt-yours td { color: var(--gk-yellow); }
 .vpt-analysis .vpt-redtext { color: #ff9090; }
-
-/* ---------- Small screens ---------- */
-
-@media (max-width: 700px) {
-  .vpt-cards { gap: 6px; }
-  .vpt-slot, .vpt-card { width: 18vw; }
-  .vpt-card { height: 25vw; }
-  .vpt-card .vpt-pip { font-size: 12vw; }
-  .vpt-card .vpt-face { font-size: 13vw; }
-  .vpt-card .vpt-corner { font-size: 5vw; }
-  .vpt-card .vpt-corner span { font-size: 4.4vw; }
-  .vpt-paytable { font-size: 12px; }
-  .vpt-message { font-size: 24px; }
-  .vpt-status { font-size: 18px; }
-  .vpt-btn { font-size: 12px; padding: 10px 2px; }
-  .vpt-btn-deal { font-size: 14px; }
-}
