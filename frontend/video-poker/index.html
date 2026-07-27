@@ -2,16 +2,29 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Video Poker Trainer — Jacks or Better</title>
 <link rel="stylesheet" href="css/gameking.css">
 <style>
-  html, body { margin: 0; background: #06060c; min-height: 100%; }
-  body { display: flex; align-items: flex-start; justify-content: center; padding: 18px 8px; }
+  html, body {
+    margin: 0;
+    background: #06060c;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  #stage {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #game { transform-origin: center center; }
 </style>
 </head>
 <body>
-<div id="game"></div>
+<div id="stage"><div id="game"></div></div>
 
 <script src="js/engine.js"></script>
 <script src="js/trainer.js"></script>
@@ -67,6 +80,34 @@
 
   // Console access: try trainer.dealHand('AS KS QS JS 9D') from devtools.
   window.trainer = trainer;
+
+  // Scale the whole widget to always fit inside the viewport, no scrolling —
+  // recomputed on resize and whenever the widget's own content changes size
+  // (switching games changes the paytable row count, opening the analysis
+  // panel adds a table, etc).
+  var stage = document.getElementById('stage');
+  var vpt = trainer.element;
+  var pending = false;
+  function fitToScreen() {
+    pending = false;
+    vpt.style.transform = 'none';
+    var natW = vpt.offsetWidth;
+    var natH = vpt.offsetHeight;
+    var availW = stage.clientWidth - 12;
+    var availH = stage.clientHeight - 12;
+    var scale = Math.min(availW / natW, availH / natH, 1);
+    vpt.style.transform = 'scale(' + scale + ')';
+  }
+  function scheduleFit() {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(fitToScreen);
+  }
+  new MutationObserver(scheduleFit).observe(vpt, { attributes: true, childList: true, subtree: true });
+  window.addEventListener('resize', scheduleFit);
+  window.addEventListener('orientationchange', scheduleFit);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', scheduleFit);
+  fitToScreen();
 </script>
 </body>
 </html>
