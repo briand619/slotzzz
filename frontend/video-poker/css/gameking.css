@@ -140,6 +140,8 @@
   box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.45);
   position: relative;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   font-family: Arial, Helvetica, sans-serif;
 }
 
@@ -231,19 +233,32 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-height: 30px;
+  height: 30px;
   padding: 2px 4px;
   font-size: 17px;
   font-weight: bold;
   letter-spacing: 1px;
 }
 
-.vpt-verdict { flex: 1; text-align: center; text-shadow: 1px 1px 0 #000; }
+.vpt-verdict {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  text-shadow: 1px 1px 0 #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .vpt-verdict.vpt-good { color: var(--gk-green); }
 .vpt-verdict.vpt-bad { color: #ff8080; }
 .vpt-verdict.vpt-neutral { color: var(--gk-cyan); }
 
-.vpt-stats { color: var(--gk-cyan); white-space: nowrap; text-shadow: 1px 1px 0 #000; }
+.vpt-stats {
+  flex: 0 0 auto;
+  color: var(--gk-cyan);
+  white-space: nowrap;
+  text-shadow: 1px 1px 0 #000;
+}
 
 /* ---------- Status line ---------- */
 
@@ -297,6 +312,8 @@
   background: linear-gradient(#fff0a0, var(--gk-btn-face) 40%, #e0a800);
   box-shadow: 0 4px 0 var(--gk-btn-edge), 0 6px 6px rgba(0, 0, 0, 0.5);
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   text-transform: uppercase;
 }
 

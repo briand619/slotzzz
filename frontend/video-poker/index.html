@@ -90,7 +90,8 @@
   var pending = false;
   function fitToScreen() {
     pending = false;
-    vpt.style.transform = 'none';
+    // offsetWidth/offsetHeight reflect the untransformed layout box regardless
+    // of the transform we apply below, so there's no need to reset it first.
     var natW = vpt.offsetWidth;
     var natH = vpt.offsetHeight;
     var availW = stage.clientWidth - 12;
@@ -103,7 +104,17 @@
     pending = true;
     requestAnimationFrame(fitToScreen);
   }
-  new MutationObserver(scheduleFit).observe(vpt, { attributes: true, childList: true, subtree: true });
+  // attributeFilter: ['class'] is essential — fitToScreen() itself writes
+  // vpt.style.transform (a style-attribute mutation on this same observed
+  // element). Without the filter, that write re-triggers this observer,
+  // which reschedules fitToScreen forever: a self-sustaining loop that
+  // forces a synchronous layout read every animation frame indefinitely.
+  new MutationObserver(scheduleFit).observe(vpt, {
+    attributes: true,
+    attributeFilter: ['class'],
+    childList: true,
+    subtree: true
+  });
   window.addEventListener('resize', scheduleFit);
   window.addEventListener('orientationchange', scheduleFit);
   if (window.visualViewport) window.visualViewport.addEventListener('resize', scheduleFit);
