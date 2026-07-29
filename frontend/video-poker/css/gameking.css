@@ -12,6 +12,8 @@
   --gk-btn-face: #ffd200;
   --gk-btn-edge: #a07800;
   --gk-font: "Arial Narrow", "Helvetica Neue Condensed", Arial, sans-serif;
+  --scanline-bg: repeating-linear-gradient(
+    to bottom, transparent 0, transparent 3px, rgba(0, 0, 20, 0.10) 3px, rgba(0, 0, 20, 0.10) 4px);
 }
 
 .vpt, .vpt * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -45,8 +47,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: repeating-linear-gradient(
-    to bottom, transparent 0, transparent 3px, rgba(0, 0, 20, 0.10) 3px, rgba(0, 0, 20, 0.10) 4px);
+  background: var(--scanline-bg);
 }
 
 /* ---------- Paytable ---------- */
@@ -62,6 +63,13 @@
   background: rgba(0, 0, 60, 0.35);
 }
 
+.vpt-paytable:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--scanline-bg);
+}
 .vpt-paytable td {
   border-left: 2px solid var(--gk-yellow);
   padding: 1px 8px 1px 6px;
@@ -232,7 +240,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 5px;
   height: 30px;
   padding: 2px 4px;
   font-size: 17px;
