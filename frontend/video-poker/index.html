@@ -104,12 +104,22 @@
     pending = true;
     requestAnimationFrame(fitToScreen);
   }
-  // attributeFilter: ['class'] is essential — fitToScreen() itself writes
-  // vpt.style.transform (a style-attribute mutation on this same observed
-  // element). Without the filter, that write re-triggers this observer,
-  // which reschedules fitToScreen forever: a self-sustaining loop that
-  // forces a synchronous layout read every animation frame indefinitely.
-  new MutationObserver(scheduleFit).observe(vpt, {
+  // Only two things ever actually change the widget's overall footprint:
+  // the paytable's row count (switching games) and the analysis panel
+  // (opening it adds a table; its row count varies 8-9 depending on the
+  // hand). Every other piece of UI — card faces, HELD tags, hint/best
+  // outlines, the message/verdict/stats text, button labels — sits in a
+  // row with a fixed CSS height and never changes the layout, so it must
+  // NOT be observed: watching the whole widget subtree meant holding a
+  // single card (a '.vpt-held' class toggle that changes nothing about
+  // size) forced a full synchronous layout read and a style rewrite on
+  // every tap, for no reason — real overhead that adds up over a long
+  // session. Scoping to just these two elements eliminates that entirely.
+  var paytableBody = vpt.querySelector('.vpt-paytable tbody');
+  var analysisPanel = vpt.querySelector('.vpt-analysis');
+  var fitObserver = new MutationObserver(scheduleFit);
+  fitObserver.observe(paytableBody, { childList: true });
+  fitObserver.observe(analysisPanel, {
     attributes: true,
     attributeFilter: ['class'],
     childList: true,
