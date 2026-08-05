@@ -3,7 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>Video Poker Trainer — Jacks or Better</title>
+<title>Video Poker Trainer</title>
+<meta name="theme-color" content="#0000a2">
+<link rel="manifest" href="manifest.webmanifest">
+<!-- iOS ignores the standard manifest for "Add to Home Screen" launch behavior; these are the tags it actually reads. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VP Trainer">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="css/gameking.css">
 <style>
   html, body {
@@ -80,6 +88,15 @@
 
   // Console access: try trainer.dealHand('AS KS QS JS 9D') from devtools.
   window.trainer = trainer;
+
+  // Registers only over http(s)/localhost - service workers can't run from a
+  // file:// URL at all, so this silently no-ops there (opening index.html
+  // directly still works fine, just without offline caching / installability).
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(function (err) {
+      console.warn('Service worker registration failed:', err);
+    });
+  }
 
   // Scale the whole widget to always fit inside the viewport, no scrolling —
   // recomputed on resize and whenever the widget's own content changes size

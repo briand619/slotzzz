@@ -48,6 +48,33 @@ python3 -m http.server 8080
 # http://localhost:8080/
 ```
 
+## Installing as an app (PWA)
+
+The trainer is a installable Progressive Web App — `manifest.webmanifest` +
+`sw.js` cache the whole app shell (HTML/CSS/JS/icons) so it keeps working
+with zero network access after the first load, and it launches full-screen
+from the home screen with no browser chrome.
+
+**The one hard requirement: it must be loaded once over `http://` or
+`https://` (localhost counts) for the service worker to register at all —
+service workers are unconditionally blocked on `file://` URLs by every
+browser.** Opening `index.html` straight from disk still runs the game fine,
+it just skips the install/offline-cache step.
+
+To install:
+
+1. Serve the directory over http(s) — locally (`python3 -m http.server`) or
+   hosted anywhere static files work (GitHub Pages, Netlify, S3, etc.).
+2. Open that URL in the browser once (Safari on iOS, Chrome on Android/desktop).
+3. **iOS Safari:** Share → **Add to Home Screen**. **Android Chrome:** menu →
+   **Install app** (or an automatic install prompt).
+4. Launch it from the home screen icon from then on — it opens full-screen,
+   no address bar or browser chrome, and works offline.
+
+If you change any cached file, bump `CACHE_NAME` in `sw.js` (e.g. `vpt-cache-v1`
+→ `v2`) so installed copies pick up the update on next launch instead of
+serving the stale cache forever.
+
 ## Feeding hands to the trainer
 
 Cards are accepted in any of these formats, interchangeably:
@@ -148,11 +175,14 @@ posted back to the parent window as they happen.
 
 ```
 frontend/video-poker/
-├── index.html          entry page: mounts the trainer, URL + postMessage APIs
-├── css/gameking.css    Game King skin (no external assets or fonts)
-├── js/engine.js        cards, hand evaluator, paytable, exact 32-way EV analysis
-│                       (UMD: also loadable from Node as a module)
-└── js/trainer.js       UI component and public VideoPokerTrainer API
+├── index.html               entry page: mounts the trainer, URL + postMessage APIs
+├── manifest.webmanifest     PWA manifest (name, icons, standalone display)
+├── sw.js                    service worker: caches the app shell for offline use
+├── icons/icon-{180,192,512}.png   home-screen / app icons
+├── css/gameking.css         Game King skin (no external assets or fonts)
+├── js/engine.js             cards, hand evaluator, paytable, exact 32-way EV analysis
+│                            (UMD: also loadable from Node as a module)
+└── js/trainer.js            UI component and public VideoPokerTrainer API
 ```
 
 ## Tests
