@@ -1,0 +1,378 @@
+/* IGT Game King-style video poker trainer skin. No external assets. */
+
+:root {
+  --gk-screen: #0000a2;
+  --gk-screen-deep: #000060;
+  --gk-yellow: #ffe200;
+  --gk-yellow-dim: #d4b800;
+  --gk-red: #d40000;
+  --gk-cyan: #00e0ff;
+  --gk-white: #ffffff;
+  --gk-green: #00d840;
+  --gk-btn-face: #ffd200;
+  --gk-btn-edge: #a07800;
+  --gk-font: "Arial Narrow", "Helvetica Neue Condensed", Arial, sans-serif;
+  --scanline-bg: repeating-linear-gradient(
+    to bottom, transparent 0, transparent 3px, rgba(0, 0, 20, 0.10) 3px, rgba(0, 0, 20, 0.10) 4px);
+}
+
+.vpt, .vpt * { box-sizing: border-box; margin: 0; padding: 0; }
+
+.vpt {
+  font-family: var(--gk-font);
+  background: #101018;
+  color: var(--gk-yellow);
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  border: 6px solid #202028;
+  border-radius: 10px;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---------- CRT screen ---------- */
+
+.vpt-screen {
+  position: relative;
+  background:
+    radial-gradient(ellipse at 50% 30%, #1414c0 0%, var(--gk-screen) 55%, var(--gk-screen-deep) 100%);
+  padding: 14px 18px 10px;
+}
+
+/* faint scanlines for the CRT feel */
+.vpt-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--scanline-bg);
+}
+
+/* ---------- Paytable ---------- */
+
+.vpt-paytable {
+  width: 100%;
+  border-collapse: collapse;
+  border: 2px solid var(--gk-yellow);
+  font-size: 17px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  line-height: 1.05;
+  background: rgba(0, 0, 60, 0.35);
+}
+
+.vpt-paytable:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--scanline-bg);
+}
+.vpt-paytable td {
+  border-left: 2px solid var(--gk-yellow);
+  padding: 1px 8px 1px 6px;
+  white-space: nowrap;
+  color: var(--gk-yellow);
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+.vpt-paytable td:first-child { border-left: none; width: 34%; }
+.vpt-paytable td + td { text-align: right; width: 13.2%; }
+
+.vpt-paytable col.vpt-bet-active-col { background: var(--gk-red); }
+
+.vpt-paytable tr:first-child td { padding-top: 3px; }
+.vpt-paytable tr:last-child td { padding-bottom: 3px; }
+
+.vpt-paytable td.vpt-pay-hit {
+  color: var(--gk-white);
+  animation: vpt-blink 0.5s step-end infinite;
+}
+
+/* ---------- Message / result line ---------- */
+
+.vpt-msgrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  margin: 6px 0 2px;
+}
+
+.vpt-message {
+  font-size: 34px;
+  font-weight: bold;
+  letter-spacing: 3px;
+  color: var(--gk-yellow);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.7);
+  text-align: center;
+}
+
+.vpt-message.vpt-win { animation: vpt-blink 0.6s step-end infinite; }
+.vpt-message.vpt-info { font-size: 24px; letter-spacing: 2px; }
+
+@keyframes vpt-blink { 50% { opacity: 0.25; } }
+
+/* ---------- Cards ---------- */
+
+.vpt-cards {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  padding: 2px 0 6px;
+}
+
+.vpt-slot { width: 190px; text-align: center; }
+
+.vpt-heldtag {
+  height: 26px;
+  font-size: 21px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: var(--gk-yellow);
+  text-shadow: 1px 1px 0 #000;
+  visibility: hidden;
+  line-height: 26px;
+}
+
+.vpt-slot.vpt-held .vpt-heldtag { visibility: visible; }
+
+.vpt-card {
+  width: 190px;
+  height: 250px;
+  border-radius: 9px;
+  background: var(--gk-white);
+  border: 1px solid #666;
+  box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.45);
+  position: relative;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.vpt-slot.vpt-disabled .vpt-card { cursor: default; }
+
+.vpt-card.vpt-back {
+  background:
+    repeating-linear-gradient(45deg, #b00020 0, #b00020 6px, #8f0018 6px, #8f0018 12px);
+  border: 6px solid var(--gk-white);
+}
+
+.vpt-card .vpt-corner {
+  position: absolute;
+  top: 6px;
+  left: 9px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 60px;
+  line-height: 0.9;
+}
+
+.vpt-card .vpt-corner span { display: block; font-size: 52px; }
+
+.vpt-card .vpt-pip {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 156px;
+  padding-top: 12px;
+}
+
+.vpt-card .vpt-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 168px;
+  font-weight: bold;
+  padding-top: 10px;
+}
+
+.vpt-card.vpt-redsuit { color: #d40000; }
+.vpt-card.vpt-blacksuit { color: #101010; }
+
+/* Wild deuce (Deuces Wild): a fading "WILD" repeat beside the rank, matching
+   the real IGT card face — the rank/suit/pip layout is otherwise untouched. */
+.vpt-wildstack {
+  position: absolute;
+  top: 13px;
+  left: 66px;
+  font-weight: bold;
+  font-size: 22px;
+  line-height: 1.15;
+  letter-spacing: 0.5px;
+  color: #101010;
+}
+.vpt-wildstack span { display: block; }
+.vpt-wildstack span:nth-child(1) { opacity: 1; }
+.vpt-wildstack span:nth-child(2) { opacity: 0.55; }
+.vpt-wildstack span:nth-child(3) { opacity: 0.3; }
+.vpt-wildstack span:nth-child(4) { opacity: 0.15; }
+
+/* ---------- Joker (Jokers Wild) ---------- */
+
+.vpt-card.vpt-joker { color: #101010; }
+.vpt-joker-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.vpt-joker-label {
+  font-weight: bold;
+  font-size: 44px;
+  letter-spacing: 0;
+}
+
+.vpt-slot.vpt-hint .vpt-card { outline: 4px solid var(--gk-cyan); outline-offset: -1px; }
+.vpt-slot.vpt-best .vpt-card { outline: 4px solid var(--gk-green); outline-offset: -1px; }
+
+/* ---------- Trainer strip ---------- */
+
+.vpt-trainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  height: 30px;
+  padding: 2px 4px;
+  font-size: 17px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.vpt-verdict {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  text-shadow: 1px 1px 0 #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vpt-verdict.vpt-good { color: var(--gk-green); }
+.vpt-verdict.vpt-bad { color: #ff8080; }
+.vpt-verdict.vpt-neutral { color: var(--gk-cyan); }
+
+.vpt-stats {
+  flex: 0 0 auto;
+  color: var(--gk-cyan);
+  white-space: nowrap;
+  text-shadow: 1px 1px 0 #000;
+}
+
+/* ---------- Status line ---------- */
+
+.vpt-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 2px 6px 4px;
+  font-size: 26px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: var(--gk-yellow);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.7);
+}
+
+.vpt-gameselect {
+  font-family: var(--gk-font);
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: var(--gk-yellow-dim);
+  background: #000040;
+  border: 1px solid var(--gk-yellow-dim);
+  border-radius: 4px;
+  padding: 3px 4px;
+  max-width: 42%;
+}
+
+.vpt-gameselect option { background: #000040; color: var(--gk-yellow); }
+
+/* ---------- Button deck ---------- */
+
+.vpt-buttons {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px 14px;
+  background: linear-gradient(#2a2a34, #16161c);
+  border-top: 4px solid #000;
+}
+
+.vpt-btn {
+  flex: 1;
+  font-family: var(--gk-font);
+  font-size: 17px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #201400;
+  padding: 12px 4px 11px;
+  border: 2px solid var(--gk-btn-edge);
+  border-radius: 8px;
+  background: linear-gradient(#fff0a0, var(--gk-btn-face) 40%, #e0a800);
+  box-shadow: 0 4px 0 var(--gk-btn-edge), 0 6px 6px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  text-transform: uppercase;
+}
+
+.vpt-btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--gk-btn-edge);
+}
+
+.vpt-btn:disabled { filter: grayscale(0.8) brightness(0.55); cursor: default; }
+
+.vpt-btn-deal {
+  flex: 1.4;
+  font-size: 20px;
+  background: linear-gradient(#ffe0a0, #ffa000 40%, #d07000);
+  border-color: #804800;
+  box-shadow: 0 4px 0 #804800, 0 6px 6px rgba(0, 0, 0, 0.5);
+}
+
+.vpt-btn-deal:active:not(:disabled) { box-shadow: 0 1px 0 #804800; }
+
+/* ---------- Analysis panel ---------- */
+
+.vpt-analysis {
+  display: none;
+  background: #000040;
+  border-top: 2px solid var(--gk-yellow);
+  padding: 8px 16px 12px;
+  color: var(--gk-white);
+  font-size: 15px;
+}
+
+.vpt-analysis.vpt-open { display: block; }
+
+.vpt-analysis h3 {
+  color: var(--gk-yellow);
+  font-size: 16px;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+
+.vpt-analysis table { width: 100%; border-collapse: collapse; }
+
+.vpt-analysis th, .vpt-analysis td {
+  text-align: left;
+  padding: 2px 8px;
+  border-bottom: 1px solid rgba(255, 226, 0, 0.25);
+  font-weight: normal;
+}
+
+.vpt-analysis th { color: var(--gk-cyan); letter-spacing: 1px; }
+.vpt-analysis td.vpt-ev { text-align: right; font-variant-numeric: tabular-nums; }
+.vpt-analysis tr.vpt-optimal td { color: var(--gk-green); font-weight: bold; }
+.vpt-analysis tr.vpt-yours td { color: var(--gk-yellow); }
+.vpt-analysis .vpt-redtext { color: #ff9090; }

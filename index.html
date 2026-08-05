@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Video Poker Trainer</title>
+<meta name="theme-color" content="#0000a2">
+<link rel="manifest" href="manifest.webmanifest">
+<!-- iOS ignores the standard manifest for "Add to Home Screen" launch behavior; these are the tags it actually reads. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VP Trainer">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/gameking.css">
+<style>
+  html, body {
+    margin: 0;
+    background: #06060c;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  #stage {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #game { transform-origin: center center; }
+</style>
+</head>
+<body>
+<div id="stage"><div id="game"></div></div>
+
+<script src="js/engine.js"></script>
+<script src="js/trainer.js"></script>
+<script>
+  var params = new URLSearchParams(location.search);
+
+  var trainer = VideoPokerTrainer.create(document.getElementById('game'), {
+    credits: params.has('credits') ? Number(params.get('credits')) : 400,
+    bet: params.has('bet') ? Number(params.get('bet')) : 5,
+    paytable: params.get('game') || undefined
+  });
+
+  // URL API: index.html?game=deuces-wild-nsu-100&hand=2S,KS,QS,JS,9D&draw=10S&bet=5&credits=1000
+  if (params.has('draw')) trainer.setDrawCards(params.get('draw'));
+  if (params.has('hand')) trainer.dealHand(params.get('hand'));
+
+  // postMessage API for embedding in an iframe:
+  //   frame.contentWindow.postMessage({ type: 'vpt:dealHand', cards: ['AS','KS','QS','JS','9D'] }, '*')
+  //   frame.contentWindow.postMessage({ type: 'vpt:setDrawCards', cards: ['10S'] }, '*')
+  //   frame.contentWindow.postMessage({ type: 'vpt:getState' }, '*')
+  // Events are posted back to the parent as { type: 'vpt:deal' | 'vpt:draw' | ..., ... }.
+  window.addEventListener('message', function (ev) {
+    var msg = ev.data;
+    if (!msg || typeof msg.type !== 'string' || msg.type.indexOf('vpt:') !== 0) return;
+    try {
+      switch (msg.type) {
+        case 'vpt:dealHand': trainer.dealHand(msg.cards); break;
+        case 'vpt:queueHand': trainer.queueHand(msg.cards); break;
+        case 'vpt:setDrawCards': trainer.setDrawCards(msg.cards); break;
+        case 'vpt:setBet': trainer.setBet(msg.bet); break;
+        case 'vpt:setGame': trainer.setGame(msg.game); break;
+        case 'vpt:addCredits': trainer.addCredits(msg.amount); break;
+        case 'vpt:deal': trainer.deal(); break;
+        case 'vpt:draw': trainer.draw(); break;
+        case 'vpt:setHolds': trainer.setHolds(msg.holds); break;
+        case 'vpt:hint': trainer.hint(); break;
+        case 'vpt:getState':
+          ev.source.postMessage({ type: 'vpt:state', state: trainer.getState() }, '*');
+          break;
+      }
+    } catch (err) {
+      ev.source.postMessage({ type: 'vpt:error', error: String(err && err.message || err) }, '*');
+    }
+  });
+
+  ['deal', 'draw', 'holdchange', 'betchange'].forEach(function (name) {
+    trainer.on(name, function (payload) {
+      if (window.parent !== window) {
+        window.parent.postMessage({ type: 'vpt:' + name, payload: payload }, '*');
+      }
+    });
+  });
+
+  // Console access: try trainer.dealHand('AS KS QS JS 9D') from devtools.
+  window.trainer = trainer;
+
+  // Registers only over http(s)/localhost - service workers can't run from a
+  // file:// URL at all, so this silently no-ops there (opening index.html
+  // directly still works fine, just without offline caching / installability).
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(function (err) {
+      console.warn('Service worker registration failed:', err);
+    });
+  }
+
+  // Scale the whole widget to always fit inside the viewport, no scrolling —
+  // recomputed on resize and whenever the widget's own content changes size
+  // (switching games changes the paytable row count, opening the analysis
+  // panel adds a table, etc).
+  var stage = document.getElementById('stage');
+  var vpt = trainer.element;
+  var pending = false;
+  function fitToScreen() {
+    pending = false;
+    // offsetWidth/offsetHeight reflect the untransformed layout box regardless
+    // of the transform we apply below, so there's no need to reset it first.
+    var natW = vpt.offsetWidth;
+    var natH = vpt.offsetHeight;
+    var availW = stage.clientWidth - 12;
+    var availH = stage.clientHeight - 12;
+    var scale = Math.min(availW / natW, availH / natH, 1);
+    vpt.style.transform = 'scale(' + scale + ')';
+  }
+  function scheduleFit() {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(fitToScreen);
+  }
+  // Only two things ever actually change the widget's overall footprint:
+  // the paytable's row count (switching games) and the analysis panel
+  // (opening it adds a table; its row count varies 8-9 depending on the
+  // hand). Every other piece of UI — card faces, HELD tags, hint/best
+  // outlines, the message/verdict/stats text, button labels — sits in a
+  // row with a fixed CSS height and never changes the layout, so it must
+  // NOT be observed: watching the whole widget subtree meant holding a
+  // single card (a '.vpt-held' class toggle that changes nothing about
+  // size) forced a full synchronous layout read and a style rewrite on
+  // every tap, for no reason — real overhead that adds up over a long
+  // session. Scoping to just these two elements eliminates that entirely.
+  var paytableBody = vpt.querySelector('.vpt-paytable tbody');
+  var analysisPanel = vpt.querySelector('.vpt-analysis');
+  var fitObserver = new MutationObserver(scheduleFit);
+  fitObserver.observe(paytableBody, { childList: true });
+  fitObserver.observe(analysisPanel, {
+    attributes: true,
+    attributeFilter: ['class'],
+    childList: true,
+    subtree: true
+  });
+  window.addEventListener('resize', scheduleFit);
+  window.addEventListener('orientationchange', scheduleFit);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', scheduleFit);
+  fitToScreen();
+</script>
+</body>
+</html>
