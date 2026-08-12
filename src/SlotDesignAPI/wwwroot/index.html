@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slot Designer</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230e1116'/%3E%3Cpath d='M16 5l7 11-7 11-7-11z' fill='%234da3ff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/designer.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">◈</span>
+    <h1>Slot Designer</h1>
+  </div>
+  <div class="topbar-controls">
+    <label class="field inline">
+      <span>Example</span>
+      <select id="example-select">
+        <option value="">Load an example…</option>
+      </select>
+    </label>
+    <span id="status" class="status" data-state="idle">Ready</span>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ────────────────  EDITOR  ──────────────── -->
+  <section class="editor" id="editor">
+
+    <details class="card" open>
+      <summary>Game</summary>
+      <div class="card-body grid-2" id="game-fields"></div>
+    </details>
+
+    <details class="card" open>
+      <summary>Symbols <span class="count" id="symbol-count"></span></summary>
+      <div class="card-body">
+        <table class="tbl" id="symbols-table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Name</th><th class="num">Weight</th>
+              <th class="mid">Wild</th><th class="mid">Scatter</th><th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <button class="btn ghost" data-action="add-symbol">+ Add symbol</button>
+        <p class="hint">Catalog weights are the shared reel distribution. They are
+        ignored when per-reel strips are defined below.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary>Reel strips <span class="count" id="strips-mode"></span></summary>
+      <div class="card-body">
+        <label class="check">
+          <input type="checkbox" id="use-strips">
+          <span>Use per-reel strips (required for multi-row grids)</span>
+        </label>
+        <div id="strips-editor"></div>
+        <p class="hint">One line per reel, in strip order. Write
+        <code>symbolId</code> or <code>symbolId:weight</code>, separated by commas.
+        Order matters: a spin shows a stop plus the following rows.</p>
+      </div>
+    </details>
+
+    <details class="card" open>
+      <summary>Paylines <span class="count" id="payline-count"></span></summary>
+      <div class="card-body" id="paylines-editor"></div>
+      <div class="card-body">
+        <button class="btn ghost" data-action="add-payline">+ Add payline</button>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary>Scatter pays <span class="count" id="scatter-count"></span></summary>
+      <div class="card-body" id="scatter-editor"></div>
+      <div class="card-body">
+        <button class="btn ghost" data-action="add-scatter">+ Add scatter tier</button>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary>Hold &amp; Spin <span class="count" id="has-state"></span></summary>
+      <div class="card-body">
+        <label class="check">
+          <input type="checkbox" id="use-has">
+          <span>Enable hold &amp; spin bonus</span>
+        </label>
+        <div id="has-editor"></div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary>Free spins <span class="count" id="fs-state"></span></summary>
+      <div class="card-body">
+        <label class="check">
+          <input type="checkbox" id="use-fs">
+          <span>Enable free-spins bonus</span>
+        </label>
+        <div id="fs-editor"></div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary>Raw JSON</summary>
+      <div class="card-body">
+        <p class="hint">The full configuration. Edit and apply to reach anything the
+        forms above don't cover.</p>
+        <textarea id="json-editor" spellcheck="false" rows="18"></textarea>
+        <div class="row-actions">
+          <button class="btn" data-action="apply-json">Apply JSON</button>
+          <button class="btn ghost" data-action="copy-json">Copy</button>
+          <span id="json-error" class="inline-error"></span>
+        </div>
+      </div>
+    </details>
+
+  </section>
+
+  <!-- ────────────────  RESULTS  ──────────────── -->
+  <aside class="results">
+
+    <div class="card metrics">
+      <div class="rtp-block">
+        <div class="rtp-label">Return to player</div>
+        <div class="rtp-value" id="rtp-value">—</div>
+        <div class="rtp-bar"><div class="rtp-fill" id="rtp-fill"></div></div>
+        <div class="rtp-note" id="rtp-note">Exact, by full outcome enumeration</div>
+      </div>
+
+      <dl class="stats">
+        <div><dt>Hit frequency</dt><dd id="stat-hit">—</dd></div>
+        <div><dt>Volatility index</dt><dd id="stat-vol">—</dd></div>
+        <div><dt>Variance</dt><dd id="stat-var">—</dd></div>
+        <div><dt>Expected win / spin</dt><dd id="stat-ev">—</dd></div>
+      </dl>
+
+      <div id="error-box" class="error-box" hidden></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>RTP contribution</h2>
+        <button class="btn ghost small" data-action="breakdown">Compute</button>
+      </div>
+      <div class="card-body">
+        <div id="breakdown">
+          <p class="hint">Splits total RTP into base lines, scatter pays, and each
+          bonus feature, by re-analyzing with features removed.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Simulation</h2>
+      </div>
+      <div class="card-body">
+        <div class="sim-controls">
+          <label class="field inline">
+            <span>Spins</span>
+            <select id="sim-spins">
+              <option value="10000">10,000</option>
+              <option value="100000" selected>100,000</option>
+              <option value="500000">500,000</option>
+              <option value="1000000">1,000,000</option>
+            </select>
+          </label>
+          <button class="btn" data-action="simulate">Run</button>
+        </div>
+        <div id="sim-results">
+          <p class="hint">Monte Carlo run through the same payout code as the exact
+          analysis — an independent check that should converge on the numbers above.</p>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+</main>
+
+<script src="js/designer.js"></script>
+</body>
+</html>

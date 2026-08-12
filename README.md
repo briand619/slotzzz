@@ -9,7 +9,8 @@ A .NET-based tool for analyzing and simulating slot machine configurations. This
 - **Exact Hit Frequency**: True probability of at least one win per spin (union probability, not a sum of per-line probabilities)
 - **Simulation Engine**: Monte Carlo runs (up to 1M spins via the API) that share the same payout-evaluation code as the theoretical engine, so theory and simulation can never model different games
 - **Web API**: RESTful endpoints for all analysis features with input validation (400 with error details for invalid configurations)
-- **Comprehensive Testing**: 41 unit tests, including exact-value regression tests for multi-payline variance and hit frequency
+- **Designer UI**: a live browser tool for tuning a game against the exact math (see below)
+- **Comprehensive Testing**: 107 unit tests, including exact-value regression tests for multi-payline variance, hit frequency, and every bonus feature
 
 ## Architecture
 
@@ -22,9 +23,37 @@ src/
 │                             # RTPCalculator, VolatilityCalculator, SimulationEngine
 ├── SlotMathEngine.Tests/     # Comprehensive unit tests
 └── SlotDesignAPI/            # ASP.NET Core Web API
-    ├── Controllers/          # AnalysisController
-    └── Services/             # ISlotAnalysisService, SlotAnalysisService
+    ├── Controllers/          # AnalysisController, ExamplesController
+    ├── Services/             # ISlotAnalysisService, SlotAnalysisService
+    └── wwwroot/              # Designer UI (plain HTML/CSS/JS, no build step)
 ```
+
+## Designer UI
+
+```bash
+dotnet run --project src/SlotDesignAPI
+# http://localhost:5164/
+```
+
+That one command serves both the API and the designer, so there is no build
+step and no CORS setup. The tool is the tuning loop this engine exists for:
+edit a symbol weight or a paytable multiplier and the exact RTP, hit frequency,
+volatility index, and variance update as you type — every figure computed by the
+API's full enumeration, never approximated in the browser.
+
+- **Examples dropdown** loads any configuration from `examples/`.
+- **Structured editors** for symbols, per-reel strips (one compact
+  `symbolId:weight` line per reel), paylines with both exact-position and
+  N-of-a-kind rules, scatter tiers, hold & spin, and free spins.
+- **RTP contribution** splits total RTP into base line pays, scatter pays, and
+  each bonus feature by re-analyzing with features removed — so you can see
+  exactly which part of the game is carrying (or breaking) your target.
+- **Simulation** runs up to 1M spins and shows the result against the theory,
+  the same cross-check the test suite makes.
+- **Validation errors** from the engine appear inline, so an impossible
+  configuration explains itself instead of failing silently.
+- **Raw JSON** editing, two-way, as an escape hatch for anything the forms
+  don't cover.
 
 ## Per-Reel Symbol Strips
 

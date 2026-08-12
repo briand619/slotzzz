@@ -18,5 +18,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Serve the designer UI from wwwroot at the site root, so `dotnet run` gives
+// both the API and the tool on one origin (no build step, no CORS).
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.MapControllers();
 app.Run();
