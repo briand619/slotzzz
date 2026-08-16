@@ -22,7 +22,6 @@
   var RANK_CHARS = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
   var SUIT_CHARS = ['C', 'D', 'H', 'S'];
   var SUIT_GLYPHS = ['♣', '♦', '♥', '♠'];
-  var SUIT_NAMES = ['clubs', 'diamonds', 'hearts', 'spades'];
   var JOKER = 52;
   var DEUCE_RANK = 0;
   var ACE_RANK = 12;
@@ -749,7 +748,6 @@
     RANK_CHARS: RANK_CHARS,
     SUIT_CHARS: SUIT_CHARS,
     SUIT_GLYPHS: SUIT_GLYPHS,
-    SUIT_NAMES: SUIT_NAMES,
     JOKER: JOKER,
     makeCard: makeCard,
     rankOf: rankOf,

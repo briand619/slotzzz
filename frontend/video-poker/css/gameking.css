@@ -375,4 +375,3 @@
 .vpt-analysis td.vpt-ev { text-align: right; font-variant-numeric: tabular-nums; }
 .vpt-analysis tr.vpt-optimal td { color: var(--gk-green); font-weight: bold; }
 .vpt-analysis tr.vpt-yours td { color: var(--gk-yellow); }
-.vpt-analysis .vpt-redtext { color: #ff9090; }
