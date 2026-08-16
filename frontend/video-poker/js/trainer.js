@@ -648,6 +648,60 @@
       if (el.gameSelect.value !== '__custom__') api.setGame(el.gameSelect.value);
     });
 
+    /*
+     * Swipe-to-hold: drag a finger across multiple cards to hold (or
+     * unhold) all of them in one gesture, instead of tapping each one.
+     * The first card touched decides the target state (hold if it wasn't
+     * held, unhold if it was); every other card the finger passes over
+     * during the same gesture is set to match.
+     *
+     * A plain tap (touchstart/touchend with no movement to a different
+     * card) is deliberately left alone here and falls through to the
+     * ordinary 'click' listener on the slot, so it isn't touched twice —
+     * calling toggleHold from both this handler and the click handler
+     * would cancel itself out. Only once the gesture is confirmed as a
+     * genuine swipe (crossing into a second slot) does this code commit
+     * the starting card's state and start suppressing the synthetic click
+     * that would otherwise fire on release.
+     */
+    var swipe = null;
+
+    function slotIndexAtPoint(x, y) {
+      var target = document.elementFromPoint(x, y);
+      var slotEl = target && target.closest ? target.closest('.vpt-slot') : null;
+      return slotEl ? el.slots.indexOf(slotEl) : -1;
+    }
+
+    el.cards.addEventListener('touchstart', function (ev) {
+      if (state.phase !== 'dealt' || ev.touches.length !== 1) return;
+      var t = ev.touches[0];
+      var idx = slotIndexAtPoint(t.clientX, t.clientY);
+      if (idx < 0) return;
+      swipe = { startIndex: idx, targetHeld: !state.held[idx], visited: {}, moved: false };
+      swipe.visited[idx] = true;
+    }, { passive: true });
+
+    el.cards.addEventListener('touchmove', function (ev) {
+      if (!swipe || ev.touches.length !== 1) return;
+      var t = ev.touches[0];
+      var idx = slotIndexAtPoint(t.clientX, t.clientY);
+      if (idx < 0 || swipe.visited[idx]) return;
+      swipe.visited[idx] = true;
+      if (!swipe.moved) {
+        swipe.moved = true;
+        if (state.held[swipe.startIndex] !== swipe.targetHeld) api.toggleHold(swipe.startIndex);
+      }
+      if (state.held[idx] !== swipe.targetHeld) api.toggleHold(idx);
+      ev.preventDefault();
+    }, { passive: false });
+
+    el.cards.addEventListener('touchend', function (ev) {
+      if (swipe && swipe.moved) ev.preventDefault(); // a real swipe: suppress the trailing synthetic click
+      swipe = null;
+    }, { passive: false });
+
+    el.cards.addEventListener('touchcancel', function () { swipe = null; }, { passive: true });
+
     if (options.keyboard !== false) {
       document.addEventListener('keydown', function (ev) {
         if (ev.target && /^(input|textarea|select)$/i.test(ev.target.tagName)) return;

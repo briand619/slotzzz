@@ -26,7 +26,10 @@ This works identically across all eight games, including the wild-card ones —
 the EV math accounts for every way a deuce or Joker could complete a hand.
 A REBUY button tops up credits by 500 at any time — useful since a PWA
 session just keeps running rather than resetting the way a fresh page load
-would.
+would. On touchscreens, drag a finger across multiple cards to hold (or
+unhold) all of them in one gesture instead of tapping each one — the first
+card touched decides the target state, and every card the finger crosses in
+that same motion is set to match.
 
 Grading has three tiers, not a strict pass/fail: an **exact** tie with the
 best EV is "OPTIMAL" (green); within 1 coin of it is "CLOSE" (amber) and
