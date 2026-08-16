@@ -194,6 +194,38 @@ suite with hand-computed expected values:
 node frontend/video-poker/test/engine.test.js
 ```
 
+There's also a Monte Carlo verification harness that cross-checks the exact,
+exhaustive-enumeration EV (`analyzeHolds`) against independent random
+sampling, across all 8 games:
+
+```bash
+node frontend/video-poker/test/simulate.js
+```
+
+This is a different kind of check than the unit tests: rather than asserting
+specific hand-computed values, it verifies that the exhaustive-enumeration
+code path (nested loops over the unseen deck) agrees with a *completely
+independent* way of computing the same expectation — drawing hundreds of
+thousands of random replacements per hold and averaging the payout. A bug in
+the enumeration's combinatorics (wrong loop bounds, deck construction,
+double-counting, wild-feasibility logic) would show up as a systematic gap
+between the two, flagged as a failure if it exceeds 6 standard errors of the
+Monte Carlo estimate. It checks both random hands (broad coverage) and
+curated hands hand-picked per game to hit rare categories that random
+dealing would essentially never produce on its own — a pat royal flush,
+wild royals, five of a kind, four deuces, and every quad-kicker tier
+(including Triple Triple Bonus's signature "4 low cards + Ace kicker"
+rule). Runs in ~1-2 minutes (990 checks across ~350 hands); a fixed RNG
+seed keeps it deterministic, so a real regression fails reliably rather
+than only failing sometimes.
+
+It also prints an approximate sampled RTP per game as an informational
+aside — averaged from the same random hands' best-hold EVs, with a ~95%
+confidence interval. With only 40 hands per game these intervals are wide
+(video poker has high variance, especially the bonus-kicker games), so
+they're a sanity glance, not a claimed RTP figure — nothing in the harness
+asserts against a specific target RTP.
+
 ## Notes on the math
 
 - EV is exact, not simulated: for each of the 32 hold masks the engine
