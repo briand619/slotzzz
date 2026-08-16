@@ -86,6 +86,15 @@ If you change any cached file, bump `CACHE_NAME` in `sw.js` (e.g. `vpt-cache-v1`
 → `v2`) so installed copies pick up the update on next launch instead of
 serving the stale cache forever.
 
+## Playing it as a Discord Activity
+
+`discord.html` (a sibling of `index.html`, same directory) runs the trainer
+embedded in a Discord voice channel via Discord's Activities platform, with
+the player's real Discord name/avatar shown. See `discord-activity/README.md`
+at the repo root for the full setup — it needs a Discord Application
+(Developer Portal) plus a small backend for the OAuth2 token exchange, which
+lives in `discord-activity/server/`.
+
 ## Feeding hands to the trainer
 
 Cards are accepted in any of these formats, interchangeably:
@@ -189,6 +198,7 @@ posted back to the parent window as they happen.
 ```
 frontend/video-poker/
 ├── index.html               entry page: mounts the trainer, URL + postMessage APIs
+├── discord.html              entry page for the Discord Activity (see discord-activity/README.md)
 ├── manifest.webmanifest     PWA manifest (name, icons, standalone display)
 ├── sw.js                    service worker: caches the app shell for offline use
 ├── icons/icon-{180,192,512}.png   home-screen / app icons
@@ -196,6 +206,9 @@ frontend/video-poker/
 ├── js/engine.js             cards, hand evaluator, paytable, exact 32-way EV analysis
 │                            (UMD: also loadable from Node as a module)
 └── js/trainer.js            UI component and public VideoPokerTrainer API
+
+discord-activity/            Discord Activity setup — see discord-activity/README.md
+└── server/                  minimal OAuth2 token-exchange backend
 ```
 
 ## Tests

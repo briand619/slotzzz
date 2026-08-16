@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Video Poker Trainer — Discord Activity</title>
+<link rel="stylesheet" href="css/gameking.css">
+<style>
+  html, body {
+    margin: 0;
+    background: #06060c;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  #stage {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  #game { transform-origin: center center; }
+
+  #identity {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    font-family: "Arial Narrow", "Helvetica Neue Condensed", Arial, sans-serif;
+    color: #ffe200;
+    font-weight: bold;
+    letter-spacing: 1px;
+    font-size: 15px;
+    text-shadow: 1px 1px 0 #000;
+  }
+  #identity img {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: block;
+  }
+
+  #activity-status {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+    font-family: "Arial Narrow", "Helvetica Neue Condensed", Arial, sans-serif;
+    color: #ffe200;
+    font-size: 18px;
+    line-height: 1.5;
+    background: #06060c;
+  }
+  #activity-status.hidden { display: none; }
+  #activity-status code {
+    display: block;
+    margin-top: 10px;
+    font-size: 13px;
+    color: #ff8080;
+    white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+<div id="activity-status">Connecting to Discord…</div>
+<div id="stage" style="display:none">
+  <div id="identity"><img id="identity-avatar" alt=""><span id="identity-name"></span></div>
+  <div id="game"></div>
+</div>
+
+<script src="js/engine.js"></script>
+<script src="js/trainer.js"></script>
+<script type="module">
+  // ---------------------------------------------------------------------
+  // 1. Fill in your application's Client ID from the Discord Developer
+  //    Portal (https://discord.com/developers/applications -> your app ->
+  //    OAuth2 -> Client ID). This is public and safe to ship client-side —
+  //    it's the Client SECRET that must never appear here (that lives only
+  //    in discord-activity/server/'s environment, see its README).
+  // ---------------------------------------------------------------------
+  const CLIENT_ID = 'YOUR_DISCORD_CLIENT_ID';
+
+  // Path the client calls for the OAuth2 code-for-token exchange. Left as a
+  // same-origin relative path so it can be routed through a second Discord
+  // URL Mapping (recommended — avoids CORS entirely, since from inside the
+  // Activity iframe it's indistinguishable from any other same-origin
+  // request). Point that mapping's prefix (e.g. "/api") at wherever
+  // discord-activity/server/ ends up hosted.
+  const TOKEN_ENDPOINT = '/api/token';
+
+  const statusEl = document.getElementById('activity-status');
+  const stageEl = document.getElementById('stage');
+
+  function showFatal(message, detail) {
+    statusEl.innerHTML = '';
+    const msg = document.createElement('div');
+    msg.textContent = message;
+    statusEl.appendChild(msg);
+    if (detail) {
+      const code = document.createElement('code');
+      code.textContent = detail;
+      statusEl.appendChild(code);
+    }
+    statusEl.classList.remove('hidden');
+    stageEl.style.display = 'none';
+  }
+
+  if (CLIENT_ID === 'YOUR_DISCORD_CLIENT_ID') {
+    showFatal('This page needs its Discord Client ID set.', 'Edit discord.html and replace CLIENT_ID with your application\'s Client ID from the Discord Developer Portal.');
+    throw new Error('discord.html: CLIENT_ID not configured');
+  }
+
+  // discordSdk.ready() waits forever for a handshake message from a parent
+  // Discord frame that only exists when this page is actually running
+  // inside an Activity — opening the URL directly in a normal tab would
+  // otherwise just hang on "Connecting to Discord…". Time that out with a
+  // clear message instead.
+  const READY_TIMEOUT_MS = 8000;
+
+  async function main() {
+    const { DiscordSDK } = await import('https://cdn.jsdelivr.net/npm/@discord/embedded-app-sdk@2.5.0/output/index.mjs');
+
+    const discordSdk = new DiscordSDK(CLIENT_ID);
+
+    let timedOut = false;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      showFatal(
+        'Still waiting on Discord after ' + (READY_TIMEOUT_MS / 1000) + 's.',
+        'This page only works when opened as a Discord Activity (launched from a voice channel), not as a normal browser tab. If you\'re testing inside Discord and still see this, double-check the URL Mapping in the Developer Portal points here.'
+      );
+    }, READY_TIMEOUT_MS);
+
+    await discordSdk.ready();
+    clearTimeout(timeout);
+    if (timedOut) return; // the timeout message is already showing; don't fight it
+
+    const { code } = await discordSdk.commands.authorize({
+      client_id: CLIENT_ID,
+      response_type: 'code',
+      state: '',
+      prompt: 'none',
+      scope: ['identify']
+    });
+
+    const tokenRes = await fetch(TOKEN_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code })
+    });
+    if (!tokenRes.ok) {
+      throw new Error('Token exchange failed: HTTP ' + tokenRes.status);
+    }
+    const { access_token } = await tokenRes.json();
+
+    const auth = await discordSdk.commands.authenticate({ access_token: access_token });
+
+    var identityEl = document.getElementById('identity');
+    var nameEl = document.getElementById('identity-name');
+    var avatarEl = document.getElementById('identity-avatar');
+    nameEl.textContent = auth.user.global_name || auth.user.username;
+    if (auth.user.avatar) {
+      avatarEl.src = 'https://cdn.discordapp.com/avatars/' + auth.user.id + '/' + auth.user.avatar + '.png?size=64';
+      avatarEl.style.display = '';
+    } else {
+      avatarEl.style.display = 'none';
+    }
+    identityEl.style.display = 'flex';
+
+    statusEl.classList.add('hidden');
+    stageEl.style.display = 'flex';
+
+    startTrainer();
+  }
+
+  function startTrainer() {
+    var params = new URLSearchParams(location.search);
+    var trainer = VideoPokerTrainer.create(document.getElementById('game'), {
+      credits: params.has('credits') ? Number(params.get('credits')) : 400,
+      bet: params.has('bet') ? Number(params.get('bet')) : 5,
+      paytable: params.get('game') || undefined
+    });
+    window.trainer = trainer;
+
+    // Same fit-to-screen approach as index.html: scale the whole widget to
+    // fit whatever size Discord gives this iframe, no scrolling.
+    var stage = document.getElementById('stage');
+    var vpt = trainer.element;
+    var pending = false;
+    function fitToScreen() {
+      pending = false;
+      var natW = vpt.offsetWidth;
+      var natH = vpt.offsetHeight;
+      var availW = stage.clientWidth - 12;
+      var availH = stage.clientHeight - 40; // leave room for the identity badge
+      var scale = Math.min(availW / natW, availH / natH, 1);
+      vpt.style.transform = 'scale(' + scale + ')';
+    }
+    function scheduleFit() {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(fitToScreen);
+    }
+    var paytableBody = vpt.querySelector('.vpt-paytable tbody');
+    var analysisPanel = vpt.querySelector('.vpt-analysis');
+    var fitObserver = new MutationObserver(scheduleFit);
+    fitObserver.observe(paytableBody, { childList: true });
+    fitObserver.observe(analysisPanel, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true });
+    window.addEventListener('resize', scheduleFit);
+    window.addEventListener('orientationchange', scheduleFit);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', scheduleFit);
+    fitToScreen();
+  }
+
+  main().catch(function (err) {
+    console.error(err);
+    showFatal('Failed to start the Discord Activity.', String(err && err.message || err));
+  });
+</script>
+</body>
+</html>
