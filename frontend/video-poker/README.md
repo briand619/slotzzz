@@ -24,6 +24,14 @@ when you press DRAW and tracks your optimal-play percentage. A HINT button
 marks the optimal hold, and the ANALYSIS panel shows the ranked EV table.
 This works identically across all eight games, including the wild-card ones —
 the EV math accounts for every way a deuce or Joker could complete a hand.
+A REBUY button tops up credits by 500 at any time — useful since a PWA
+session just keeps running rather than resetting the way a fresh page load
+would.
+
+Grading has three tiers, not a strict pass/fail: an **exact** tie with the
+best EV is "OPTIMAL" (green); within 1 coin of it is "CLOSE" (amber) and
+still counts toward the optimal-play percentage; anything further off is
+flagged as a miss (red), showing what the best hold actually was.
 
 > **Triple Triple Bonus notes:** it includes the game's signature quirk where
 > a quad 2s/3s/4s with an **Ace** kicker matches the top "4 Aces w/2,3,4
@@ -145,8 +153,10 @@ index.html?hand=...&bet=5&credits=1000  set bet and starting credits
   game.on('deal', ({ hand, bet }) => {});
   game.on('holdchange', ({ held }) => {});
   game.on('draw', ({ finalHand, categoryName, won, credits,
-                     playerHold, optimalHold, wasOptimal,
-                     playerEV, optimalEV, hintUsed }) => {});
+                     playerHold, optimalHold, wasOptimal, wasExact, wasClose,
+                     playerEV, optimalEV, evLost, hintUsed }) => {});
+  // wasOptimal is true for both wasExact (tied the best EV) and wasClose
+  // (within 1 coin of it) - see "Notes on the math" below.
   game.on('betchange', ({ bet }) => {});
   game.on('gamechange', ({ paytable }) => {}); // game switched (dropdown or setGame)
   game.on('analysis', ({ results }) => {}); // hold analysis finished for a deal
@@ -235,8 +245,10 @@ asserts against a specific target RTP.
 - EVs are reported in coins at the current bet, so the 4000-coin max-bet
   royal correctly makes 4-to-a-royal beat a pat flush at 5 coins
   (92.13 vs 30.00) in Jacks or Better — the classic trainer example.
-- A hold counts as optimal if its EV ties the best EV (within 1e-9), so
-  equivalent holds are never marked wrong.
+- A hold is graded "exact" if its EV ties the best EV (within 1e-9), so
+  equivalent holds are never marked wrong, and "close" (still counted toward
+  the optimal-play stat) if it's within 1 coin of the best — a fixed
+  absolute threshold, not scaled by bet.
 - Wild-card hands (Deuces Wild, Jokers Wild) are scored by checking, for each
   candidate category from best to worst, whether the non-wild cards can be
   completed into that category by *some* assignment of the wild cards — e.g.

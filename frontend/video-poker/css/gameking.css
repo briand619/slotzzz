@@ -9,6 +9,7 @@
   --gk-cyan: #00e0ff;
   --gk-white: #ffffff;
   --gk-green: #00d840;
+  --gk-amber: #ffa000;
   --gk-btn-face: #ffd200;
   --gk-btn-edge: #a07800;
   --gk-font: "Arial Narrow", "Helvetica Neue Condensed", Arial, sans-serif;
@@ -259,6 +260,7 @@
 }
 .vpt-verdict.vpt-good { color: var(--gk-green); }
 .vpt-verdict.vpt-bad { color: #ff8080; }
+.vpt-verdict.vpt-close { color: var(--gk-amber); }
 .vpt-verdict.vpt-neutral { color: var(--gk-cyan); }
 
 .vpt-stats {
