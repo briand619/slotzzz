@@ -17,6 +17,11 @@
   if (!E) throw new Error('VideoPokerTrainer requires engine.js (VPEngine) to be loaded first');
 
   var EV_EPSILON = 1e-9;
+  /* A hold within this many coins of the exact-best EV is graded "close"
+     rather than "wrong" — still counts toward the optimal-play stat, but is
+     flagged distinctly from a true exact-tie best hold. */
+  var EV_CLOSE_THRESHOLD = 1;
+  var REBUY_AMOUNT = 500;
 
   /* Games offered by the built-in variant selector, in menu order. */
   var GAME_LIST = [
@@ -86,6 +91,7 @@
       '  </div>' +
       '</div>' +
       '<div class="vpt-buttons">' +
+      '  <button class="vpt-btn vpt-btn-rebuy">Rebuy</button>' +
       '  <button class="vpt-btn vpt-btn-analysis">Analysis</button>' +
       '  <button class="vpt-btn vpt-btn-paytoggle">See Pays</button>' +
       '  <button class="vpt-btn vpt-btn-betone">Bet One</button>' +
@@ -109,6 +115,7 @@
       win: root.querySelector('.vpt-win'),
       credit: root.querySelector('.vpt-credit'),
       hint: root.querySelector('.vpt-btn-hint'),
+      rebuy: root.querySelector('.vpt-btn-rebuy'),
       analysisBtn: root.querySelector('.vpt-btn-analysis'),
       payToggle: root.querySelector('.vpt-btn-paytoggle'),
       betOne: root.querySelector('.vpt-btn-betone'),
@@ -378,7 +385,10 @@
       var mask = playerMask();
       var playerItem = state.analysis.find(function (r) { return r.mask === mask; });
       var best = state.analysis[0];
-      var wasOptimal = playerItem.ev >= best.ev - EV_EPSILON;
+      var evDiff = best.ev - playerItem.ev;
+      var wasExact = evDiff <= EV_EPSILON;
+      var wasClose = evDiff <= EV_CLOSE_THRESHOLD; // includes exact ties; the looser "counts as optimal" bar
+      var wasOptimal = wasClose;
 
       var stackIdx = 0;
       for (var i = 0; i < 5; i++) {
@@ -392,9 +402,11 @@
 
       state.stats.hands++;
       if (wasOptimal) state.stats.optimal++;
-      state.stats.evLost += best.ev - playerItem.ev;
+      state.stats.evLost += evDiff;
       state.lastVerdict = {
         wasOptimal: wasOptimal,
+        wasExact: wasExact,
+        wasClose: wasClose && !wasExact,
         playerEV: playerItem.ev,
         bestEV: best.ev,
         bestHold: best.heldIndices.slice()
@@ -408,13 +420,19 @@
       }
 
       renderHand();
-      if (wasOptimal) {
+      if (wasExact) {
         el.verdict.textContent = '✓ OPTIMAL HOLD · EV ' + best.ev.toFixed(3);
         el.verdict.className = 'vpt-verdict vpt-good';
       } else {
-        el.verdict.textContent = '✗ BEST: ' + holdLabel(best) +
-          ' · EV ' + best.ev.toFixed(3) + ' VS YOURS ' + playerItem.ev.toFixed(3);
-        el.verdict.className = 'vpt-verdict vpt-bad';
+        if (wasClose) {
+          el.verdict.textContent = '≈ CLOSE HOLD · EV ' + playerItem.ev.toFixed(3) +
+            ' (BEST ' + best.ev.toFixed(3) + ')';
+          el.verdict.className = 'vpt-verdict vpt-close';
+        } else {
+          el.verdict.textContent = '✗ BEST: ' + holdLabel(best) +
+            ' · EV ' + best.ev.toFixed(3) + ' VS YOURS ' + playerItem.ev.toFixed(3);
+          el.verdict.className = 'vpt-verdict vpt-bad';
+        }
         best.heldIndices.forEach(function (idx) {
           el.slots[idx].classList.add('vpt-best');
         });
@@ -433,8 +451,11 @@
         playerHold: playerItem.heldIndices,
         optimalHold: best.heldIndices,
         wasOptimal: wasOptimal,
+        wasExact: wasExact,
+        wasClose: wasClose && !wasExact,
         playerEV: playerItem.ev,
         optimalEV: best.ev,
+        evLost: evDiff,
         hintUsed: state.hintUsed
       });
     }
@@ -612,6 +633,7 @@
       deal();
     });
     el.hint.addEventListener('click', showHint);
+    el.rebuy.addEventListener('click', function () { api.addCredits(REBUY_AMOUNT); });
     el.analysisBtn.addEventListener('click', function () {
       el.analysisPanel.classList.toggle('vpt-open');
       if (el.analysisPanel.classList.contains('vpt-open')) {
