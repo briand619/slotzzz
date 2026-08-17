@@ -9,7 +9,6 @@
   --gk-cyan: #00e0ff;
   --gk-white: #ffffff;
   --gk-green: #00d840;
-  --gk-amber: #ffa000;
   --gk-btn-face: #ffd200;
   --gk-btn-edge: #a07800;
   --gk-font: "Arial Narrow", "Helvetica Neue Condensed", Arial, sans-serif;
@@ -260,7 +259,6 @@
 }
 .vpt-verdict.vpt-good { color: var(--gk-green); }
 .vpt-verdict.vpt-bad { color: #ff8080; }
-.vpt-verdict.vpt-close { color: var(--gk-amber); }
 .vpt-verdict.vpt-neutral { color: var(--gk-cyan); }
 
 .vpt-stats {
@@ -377,3 +375,75 @@
 .vpt-analysis td.vpt-ev { text-align: right; font-variant-numeric: tabular-nums; }
 .vpt-analysis tr.vpt-optimal td { color: var(--gk-green); font-weight: bold; }
 .vpt-analysis tr.vpt-yours td { color: var(--gk-yellow); }
+
+/* ---------- Settings modal ---------- */
+
+.vpt-modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 8, 0.75);
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.vpt-modal-backdrop.vpt-open { display: flex; }
+
+.vpt-modal {
+  background: #000040;
+  border: 2px solid var(--gk-yellow);
+  border-radius: 8px;
+  padding: 16px 20px 20px;
+  color: var(--gk-white);
+  font-size: 15px;
+  width: 100%;
+  max-width: 320px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.vpt-modal h3 {
+  color: var(--gk-yellow);
+  font-size: 16px;
+  letter-spacing: 2px;
+  margin: 0 0 12px;
+}
+
+.vpt-btn-settings-close {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+}
+
+.vpt-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vpt-settings-row label {
+  color: var(--gk-cyan);
+  letter-spacing: 0.5px;
+}
+
+.vpt-tol-input {
+  width: 70px;
+  font-family: var(--gk-font);
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--gk-yellow);
+  background: #000020;
+  border: 1px solid var(--gk-yellow-dim);
+  border-radius: 4px;
+  padding: 3px 6px;
+  text-align: right;
+}
+
+.vpt-settings-hint {
+  margin-top: 8px;
+  color: var(--gk-yellow-dim);
+  font-size: 12px;
+  line-height: 1.4;
+}
