@@ -132,6 +132,8 @@
   // size) forced a full synchronous layout read and a style rewrite on
   // every tap, for no reason — real overhead that adds up over a long
   // session. Scoping to just these two elements eliminates that entirely.
+  // (The settings modal is appended to <body>, not a descendant of this
+  // widget, so it never needs to be observed here.)
   var paytableBody = vpt.querySelector('.vpt-paytable tbody');
   var analysisPanel = vpt.querySelector('.vpt-analysis');
   var fitObserver = new MutationObserver(scheduleFit);

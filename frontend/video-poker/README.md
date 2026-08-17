@@ -31,10 +31,11 @@ unhold) all of them in one gesture instead of tapping each one — the first
 card touched decides the target state, and every card the finger crosses in
 that same motion is set to match.
 
-Grading has three tiers, not a strict pass/fail: an **exact** tie with the
-best EV is "OPTIMAL" (green); within 1 coin of it is "CLOSE" (amber) and
-still counts toward the optimal-play percentage; anything further off is
-flagged as a miss (red), showing what the best hold actually was.
+A SETTINGS button opens a modal with **optimal hold tolerance**: a hold within
+this many coins of the exact-best EV is graded OPTIMAL (green), not just an
+exact tie — set it to 0 to require an exact match, where any deviation at all
+is flagged a miss; the default is 1.0. A miss (red) shows what the best hold
+actually was.
 
 > **Triple Triple Bonus notes:** it includes the game's signature quirk where
 > a quad 2s/3s/4s with an **Ace** kicker matches the top "4 Aces w/2,3,4
@@ -129,7 +130,8 @@ index.html?hand=...&bet=5&credits=1000  set bet and starting credits
     credits: 400,                  // starting credits (default 400)
     bet: 5,                        // starting bet 1..5 (default 5)
     paytable: 'deuces-wild-nsu-100', // any key from the games table above (default jacks-or-better-9-6)
-    keyboard: true                 // 1-5 hold, space/enter deal/draw, B/M bet, H hint, A analysis
+    optimalTolerance: 1.0,         // coins of EV a hold can be off by and still grade OPTIMAL (default 1.0; 0 = exact match only)
+    keyboard: true                 // 1-5 hold, space/enter deal/draw, B/M bet, H hint, A analysis, S settings
   });
 
   // Switch games any time (credits carry over; hand/stats reset):
@@ -150,6 +152,7 @@ index.html?hand=...&bet=5&credits=1000  set bet and starting credits
   game.draw();
   game.setBet(3);
   game.addCredits(400);
+  game.setOptimalTolerance(0);   // 0 = only an exact-tie hold grades OPTIMAL
   game.hint();                   // mark the optimal hold on screen
 
   // Exact EV of all 32 holds for the live hand, best first:
@@ -165,13 +168,16 @@ index.html?hand=...&bet=5&credits=1000  set bet and starting credits
   game.on('deal', ({ hand, bet }) => {});
   game.on('holdchange', ({ held }) => {});
   game.on('draw', ({ finalHand, categoryName, won, credits,
-                     playerHold, optimalHold, wasOptimal, wasExact, wasClose,
+                     playerHold, optimalHold, wasOptimal, wasExact,
                      playerEV, optimalEV, evLost, hintUsed }) => {});
-  // wasOptimal is true for both wasExact (tied the best EV) and wasClose
-  // (within 1 coin of it) - see "Notes on the math" below.
+  // wasOptimal is true whenever the player's EV is within the current
+  // optimalTolerance setting of the best EV (wasExact is the tighter,
+  // tolerance-independent check for an exact tie) - see "Notes on the
+  // math" below.
   game.on('betchange', ({ bet }) => {});
   game.on('gamechange', ({ paytable }) => {}); // game switched (dropdown or setGame)
   game.on('analysis', ({ results }) => {}); // hold analysis finished for a deal
+  game.on('settingschange', ({ optimalTolerance }) => {}); // tolerance changed (API or Settings modal)
 </script>
 ```
 
@@ -261,10 +267,11 @@ asserts against a specific target RTP.
 - EVs are reported in coins at the current bet, so the 4000-coin max-bet
   royal correctly makes 4-to-a-royal beat a pat flush at 5 coins
   (92.13 vs 30.00) in Jacks or Better — the classic trainer example.
-- A hold is graded "exact" if its EV ties the best EV (within 1e-9), so
-  equivalent holds are never marked wrong, and "close" (still counted toward
-  the optimal-play stat) if it's within 1 coin of the best — a fixed
-  absolute threshold, not scaled by bet.
+- A hold is graded "exact" if its EV ties the best EV (within 1e-9, a
+  floating-point floor only), and "optimal" if it's within the configurable
+  `optimalTolerance` setting (default 1.0 coins) of the best — a fixed
+  absolute threshold, not scaled by bet. Setting the tolerance to 0 makes
+  "optimal" require an exact tie.
 - Wild-card hands (Deuces Wild, Jokers Wild) are scored by checking, for each
   candidate category from best to worst, whether the non-wild cards can be
   completed into that category by *some* assignment of the wild cards — e.g.

@@ -207,11 +207,19 @@
       pending = true;
       requestAnimationFrame(fitToScreen);
     }
+    // The settings modal is appended to <body>, not a descendant of this
+    // widget, so it never needs to be observed here — see the matching
+    // comment in index.html.
     var paytableBody = vpt.querySelector('.vpt-paytable tbody');
     var analysisPanel = vpt.querySelector('.vpt-analysis');
     var fitObserver = new MutationObserver(scheduleFit);
     fitObserver.observe(paytableBody, { childList: true });
-    fitObserver.observe(analysisPanel, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true });
+    fitObserver.observe(analysisPanel, {
+      attributes: true,
+      attributeFilter: ['class'],
+      childList: true,
+      subtree: true
+    });
     window.addEventListener('resize', scheduleFit);
     window.addEventListener('orientationchange', scheduleFit);
     if (window.visualViewport) window.visualViewport.addEventListener('resize', scheduleFit);

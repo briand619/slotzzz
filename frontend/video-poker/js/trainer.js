@@ -16,12 +16,17 @@
   var E = global.VPEngine;
   if (!E) throw new Error('VideoPokerTrainer requires engine.js (VPEngine) to be loaded first');
 
+  /*
+   * Floating-point safety margin only — not user-configurable. Exact ties
+   * can differ by ~1e-15 depending on summation order, so this keeps a
+   * genuinely-tied hold from being misgraded even when the user sets the
+   * optimal hold tolerance to 0 (which should mean "require exactness",
+   * not "reject due to floating-point noise").
+   */
   var EV_EPSILON = 1e-9;
-  /* A hold within this many coins of the exact-best EV is graded "close"
-     rather than "wrong" — still counts toward the optimal-play stat, but is
-     flagged distinctly from a true exact-tie best hold. */
-  var EV_CLOSE_THRESHOLD = 1;
+  var DEFAULT_OPTIMAL_TOLERANCE = 1.0;
   var REBUY_AMOUNT = 500;
+  var nextInstanceId = 0; // keeps each instance's <label for> / <input id> pair unique on the page
 
   /* Games offered by the built-in variant selector, in menu order. */
   var GAME_LIST = [
@@ -44,6 +49,7 @@
   function create(container, options) {
     options = options || {};
     var paytable = resolvePaytable(options.paytable);
+    var instanceId = nextInstanceId++;
 
     /* ---------- state ---------- */
     var state = {
@@ -60,7 +66,14 @@
       analysisJob: null,
       hintUsed: false,
       lastVerdict: null,
-      stats: { hands: 0, optimal: 0, evLost: 0 }
+      stats: { hands: 0, optimal: 0, evLost: 0 },
+      settings: {
+        // A hold within this many coins of the exact-best EV is still
+        // graded OPTIMAL, not just "close" — 0 requires an exact match.
+        optimalTolerance: options.optimalTolerance != null
+          ? Math.max(0, options.optimalTolerance)
+          : DEFAULT_OPTIMAL_TOLERANCE
+      }
     };
 
     var listeners = {};
@@ -92,6 +105,7 @@
       '</div>' +
       '<div class="vpt-buttons">' +
       '  <button class="vpt-btn vpt-btn-rebuy">Rebuy</button>' +
+      '  <button class="vpt-btn vpt-btn-settings">Settings</button>' +
       '  <button class="vpt-btn vpt-btn-analysis">Analysis</button>' +
       '  <button class="vpt-btn vpt-btn-paytoggle">See Pays</button>' +
       '  <button class="vpt-btn vpt-btn-betone">Bet One</button>' +
@@ -102,6 +116,32 @@
       '<thead><tr><th>#</th><th>HOLD</th><th style="text-align:right">EV</th></tr></thead>' +
       '<tbody></tbody></table></div>';
     container.appendChild(root);
+
+    /*
+     * The settings modal is deliberately NOT a descendant of `root` — root
+     * gets `transform: scale(...)` applied to it by whatever page mounts
+     * this widget (both index.html and discord.html do, to fit the widget
+     * to the viewport). A `position: fixed` element nested inside a
+     * transformed ancestor is positioned relative to THAT ancestor, not the
+     * real viewport, so a modal built as a child of root would end up
+     * trapped and shrunk inside the widget's own (possibly tiny, scaled-
+     * down) box instead of overlaying the whole screen. Appending it to
+     * <body> instead sidesteps that entirely.
+     */
+    var modal = document.createElement('div');
+    modal.className = 'vpt-modal-backdrop';
+    modal.innerHTML =
+      '<div class="vpt-modal" role="dialog" aria-modal="true" aria-labelledby="vpt-settings-title-' + instanceId + '">' +
+      '  <h3 id="vpt-settings-title-' + instanceId + '">SETTINGS</h3>' +
+      '  <div class="vpt-settings-row">' +
+      '    <label for="vpt-tol-input-' + instanceId + '">OPTIMAL HOLD TOLERANCE (COINS)</label>' +
+      '    <input type="number" id="vpt-tol-input-' + instanceId + '" class="vpt-tol-input" min="0" step="0.1">' +
+      '  </div>' +
+      '  <p class="vpt-settings-hint">A hold within this many coins of the best EV is graded OPTIMAL. ' +
+      '0 requires an exact match.</p>' +
+      '  <button class="vpt-btn vpt-btn-settings-close">Done</button>' +
+      '</div>';
+    document.body.appendChild(modal);
 
     var el = {
       paytableBody: root.querySelector('.vpt-paytable tbody'),
@@ -123,8 +163,13 @@
       deal: root.querySelector('.vpt-btn-deal'),
       analysisPanel: root.querySelector('.vpt-analysis'),
       analysisBody: root.querySelector('.vpt-analysis tbody'),
+      settingsBtn: root.querySelector('.vpt-btn-settings'),
+      settingsModal: modal,
+      settingsClose: modal.querySelector('.vpt-btn-settings-close'),
+      toleranceInput: modal.querySelector('.vpt-tol-input'),
       slots: []
     };
+    el.toleranceInput.value = state.settings.optimalTolerance;
 
     /* variant selector */
     GAME_LIST.forEach(function (g) {
@@ -387,8 +432,12 @@
       var best = state.analysis[0];
       var evDiff = best.ev - playerItem.ev;
       var wasExact = evDiff <= EV_EPSILON;
-      var wasClose = evDiff <= EV_CLOSE_THRESHOLD; // includes exact ties; the looser "counts as optimal" bar
-      var wasOptimal = wasClose;
+      // The configured tolerance is the pass bar; EV_EPSILON is a floor
+      // under it so setting the tolerance to 0 still means "require
+      // exactness" rather than "reject genuine ties over floating-point
+      // noise" (see the EV_EPSILON comment above).
+      var tolerance = Math.max(state.settings.optimalTolerance, EV_EPSILON);
+      var wasOptimal = evDiff <= tolerance;
 
       var stackIdx = 0;
       for (var i = 0; i < 5; i++) {
@@ -406,7 +455,6 @@
       state.lastVerdict = {
         wasOptimal: wasOptimal,
         wasExact: wasExact,
-        wasClose: wasClose && !wasExact,
         playerEV: playerItem.ev,
         bestEV: best.ev,
         bestHold: best.heldIndices.slice()
@@ -420,19 +468,15 @@
       }
 
       renderHand();
-      if (wasExact) {
-        el.verdict.textContent = '✓ OPTIMAL HOLD · EV ' + best.ev.toFixed(3);
+      if (wasOptimal) {
+        el.verdict.textContent = wasExact
+          ? '✓ OPTIMAL HOLD · EV ' + best.ev.toFixed(3)
+          : '✓ OPTIMAL HOLD · EV ' + playerItem.ev.toFixed(3) + ' (BEST ' + best.ev.toFixed(3) + ')';
         el.verdict.className = 'vpt-verdict vpt-good';
       } else {
-        if (wasClose) {
-          el.verdict.textContent = '≈ CLOSE HOLD · EV ' + playerItem.ev.toFixed(3) +
-            ' (BEST ' + best.ev.toFixed(3) + ')';
-          el.verdict.className = 'vpt-verdict vpt-close';
-        } else {
-          el.verdict.textContent = '✗ BEST: ' + holdLabel(best) +
-            ' · EV ' + best.ev.toFixed(3) + ' VS YOURS ' + playerItem.ev.toFixed(3);
-          el.verdict.className = 'vpt-verdict vpt-bad';
-        }
+        el.verdict.textContent = '✗ BEST: ' + holdLabel(best) +
+          ' · EV ' + best.ev.toFixed(3) + ' VS YOURS ' + playerItem.ev.toFixed(3);
+        el.verdict.className = 'vpt-verdict vpt-bad';
         best.heldIndices.forEach(function (idx) {
           el.slots[idx].classList.add('vpt-best');
         });
@@ -452,7 +496,6 @@
         optimalHold: best.heldIndices,
         wasOptimal: wasOptimal,
         wasExact: wasExact,
-        wasClose: wasClose && !wasExact,
         playerEV: playerItem.ev,
         optimalEV: best.ev,
         evLost: evDiff,
@@ -542,6 +585,15 @@
         renderButtons();
         return api;
       },
+      /* 0 requires an exact-tie hold to grade OPTIMAL; higher values are more forgiving. */
+      setOptimalTolerance: function (n) {
+        var v = Math.max(0, Number(n));
+        if (!isFinite(v)) return api;
+        state.settings.optimalTolerance = v;
+        el.toleranceInput.value = v;
+        emit('settingschange', { optimalTolerance: v });
+        return api;
+      },
       /*
        * Switch games (e.g. 'deuces-wild-nsu-100', or a custom paytable
        * object). Credits carry over; the current hand, stats, and hint/
@@ -605,6 +657,7 @@
             optimal: state.stats.optimal,
             evLost: state.stats.evLost
           },
+          settings: { optimalTolerance: state.settings.optimalTolerance },
           lastVerdict: state.lastVerdict
         };
       },
@@ -634,6 +687,24 @@
     });
     el.hint.addEventListener('click', showHint);
     el.rebuy.addEventListener('click', function () { api.addCredits(REBUY_AMOUNT); });
+    function openSettings() {
+      el.toleranceInput.value = state.settings.optimalTolerance;
+      el.settingsModal.classList.add('vpt-open');
+    }
+    function closeSettings() {
+      el.settingsModal.classList.remove('vpt-open');
+    }
+    el.settingsBtn.addEventListener('click', openSettings);
+    el.settingsClose.addEventListener('click', closeSettings);
+    el.settingsModal.addEventListener('click', function (ev) {
+      if (ev.target === el.settingsModal) closeSettings(); // backdrop click, not the dialog itself
+    });
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape' && el.settingsModal.classList.contains('vpt-open')) closeSettings();
+    });
+    el.toleranceInput.addEventListener('change', function () {
+      api.setOptimalTolerance(el.toleranceInput.value);
+    });
     el.analysisBtn.addEventListener('click', function () {
       el.analysisPanel.classList.toggle('vpt-open');
       if (el.analysisPanel.classList.contains('vpt-open')) {
@@ -715,6 +786,7 @@
         else if (k === 'm' || k === 'M') el.betMax.click();
         else if (k === 'h' || k === 'H') showHint();
         else if (k === 'a' || k === 'A') el.analysisBtn.click();
+        else if (k === 's' || k === 'S') el.settingsBtn.click();
       });
     }
 
