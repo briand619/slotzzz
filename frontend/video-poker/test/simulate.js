@@ -112,6 +112,11 @@ const CURATED = {
     { label: '4 aces (flat tier)', hand: h('AS AH AD AC 7H'), hold: [0, 1, 2, 3, 4] },
     { label: '4 low (flat tier)', hand: h('3S 3H 3D 3C 7H'), hold: [0, 1, 2, 3, 4] }
   ],
+  'super-aces-bonus-poker': [
+    { label: '4 aces (signature 400x tier)', hand: h('AS AH AD AC 7H'), hold: [0, 1, 2, 3, 4] },
+    { label: '4 low (2-4)', hand: h('3S 3H 3D 3C 7H'), hold: [0, 1, 2, 3, 4] },
+    { label: '4 mid/high (5-K)', hand: h('9S 9H 9D 9C 7H'), hold: [0, 1, 2, 3, 4] }
+  ],
   'double-double-bonus-9-6': [
     { label: '4 aces w/2-4 kicker', hand: h('AS AH AD AC 3H'), hold: [0, 1, 2, 3, 4] },
     { label: '4 aces, other kicker', hand: h('AS AH AD AC 7H'), hold: [0, 1, 2, 3, 4] },
@@ -146,7 +151,7 @@ const CURATED = {
 };
 
 const GAME_LIST = [
-  'jacks-or-better-9-6', 'bonus-poker-8-5', 'bonus-poker-deluxe-9-6',
+  'jacks-or-better-9-6', 'bonus-poker-8-5', 'super-aces-bonus-poker', 'bonus-poker-deluxe-9-6',
   'double-double-bonus-9-6', 'triple-double-bonus-9-7', 'triple-triple-bonus',
   'deuces-wild-nsu-100', 'jokers-wild-kings-or-better'
 ];

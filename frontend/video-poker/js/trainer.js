@@ -32,6 +32,7 @@
   var GAME_LIST = [
     { key: 'jacks-or-better-9-6', label: 'Jacks or Better' },
     { key: 'bonus-poker-8-5', label: 'Bonus Poker' },
+    { key: 'super-aces-bonus-poker', label: 'Super Aces Bonus Poker' },
     { key: 'bonus-poker-deluxe-9-6', label: 'Bonus Poker Deluxe' },
     { key: 'double-double-bonus-9-6', label: 'Double Double Bonus' },
     { key: 'triple-double-bonus-9-7', label: 'Triple Double Bonus' },

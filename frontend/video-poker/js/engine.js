@@ -124,6 +124,31 @@
         { category: CATEGORY.JACKS_OR_BETTER, label: 'JACKS OR BETTER', pays: [1, 2, 3, 4, 5] }
       ]
     },
+    /*
+     * Super Aces Bonus Poker: same rank-tier quad mechanic as Bonus Poker,
+     * but Four Aces pays out far more (400 for 1 coin, the game's signature
+     * jackpot) while full house/flush are cut to 6/5 to pay for it.
+     */
+    'super-aces-bonus-poker': {
+      id: 'super-aces-bonus-poker',
+      name: 'SUPER ACES BONUS POKER',
+      family: 'standard',
+      quadRule: 'rank-tier',
+      deck: 52,
+      rows: [
+        { category: CATEGORY.ROYAL_FLUSH, label: 'ROYAL FLUSH', pays: [250, 500, 750, 1000, 4000] },
+        { category: CATEGORY.STRAIGHT_FLUSH, label: 'STRAIGHT FLUSH', pays: [40, 80, 120, 160, 200] },
+        { category: CATEGORY.FOUR_ACES, label: '4 ACES', pays: [400, 800, 1200, 1600, 2000] },
+        { category: CATEGORY.FOUR_LOW, label: '4 2S, 3S OR 4S', pays: [40, 80, 120, 160, 200] },
+        { category: CATEGORY.FOUR_5_TO_K, label: '4 5S THRU KS', pays: [20, 40, 60, 80, 100] },
+        { category: CATEGORY.FULL_HOUSE, label: 'FULL HOUSE', pays: [6, 12, 18, 24, 30] },
+        { category: CATEGORY.FLUSH, label: 'FLUSH', pays: [5, 10, 15, 20, 25] },
+        { category: CATEGORY.STRAIGHT, label: 'STRAIGHT', pays: [4, 8, 12, 16, 20] },
+        { category: CATEGORY.THREE_OF_A_KIND, label: '3 OF A KIND', pays: [3, 6, 9, 12, 15] },
+        { category: CATEGORY.TWO_PAIR, label: 'TWO PAIR', pays: [1, 2, 3, 4, 5] },
+        { category: CATEGORY.JACKS_OR_BETTER, label: 'JACKS OR BETTER', pays: [1, 2, 3, 4, 5] }
+      ]
+    },
     'bonus-poker-deluxe-9-6': {
       id: 'bonus-poker-deluxe-9-6',
       name: 'BONUS POKER DELUXE',

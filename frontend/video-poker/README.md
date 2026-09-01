@@ -4,13 +4,14 @@ A self-contained, no-build video poker trainer styled after IGT Game King
 machines: blue CRT screen, yellow paytable with the active bet column in red,
 white cards with HELD tags, and a yellow button deck.
 
-Eight games are built in, switchable from the dropdown in the status bar
+Nine games are built in, switchable from the dropdown in the status bar
 (or via API/URL — see below):
 
 | Game | Family | Notes |
 | --- | --- | --- |
 | Jacks or Better (9/6) | standard | the reference full-pay table |
 | Bonus Poker (8/5) | standard | quads split into Aces / 2s-4s / 5s-Ks tiers |
+| Super Aces Bonus Poker | standard | same rank-tier split, but Four Aces pays 400x (vs. Bonus Poker's 80x), balanced by a 6/5 full house/flush |
 | Bonus Poker Deluxe (9/6) | standard | flat quad pay, no rank tiers |
 | Double Double Bonus (9/6) | standard | Aces and 2s-4s quads further split by kicker rank |
 | Triple Double Bonus (9/7) | standard | same mechanic as DDB, bigger bonus tiers |
@@ -22,7 +23,7 @@ On every deal the trainer computes the **exact** expected value of all 32
 possible hold combinations by enumerating every draw, then grades your hold
 when you press DRAW and tracks your optimal-play percentage. A HINT button
 marks the optimal hold, and the ANALYSIS panel shows the ranked EV table.
-This works identically across all eight games, including the wild-card ones —
+This works identically across all nine games, including the wild-card ones —
 the EV math accounts for every way a deuce or Joker could complete a hand.
 A REBUY button tops up credits by 500 at any time — useful since a PWA
 session just keeps running rather than resetting the way a fresh page load
@@ -228,7 +229,7 @@ node frontend/video-poker/test/engine.test.js
 
 There's also a Monte Carlo verification harness that cross-checks the exact,
 exhaustive-enumeration EV (`analyzeHolds`) against independent random
-sampling, across all 8 games:
+sampling, across all 9 games:
 
 ```bash
 node frontend/video-poker/test/simulate.js

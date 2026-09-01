@@ -5,7 +5,7 @@
  */
 'use strict';
 
-var CACHE_NAME = 'vpt-cache-v5';
+var CACHE_NAME = 'vpt-cache-v6';
 var APP_SHELL = [
   './',
   './index.html',
