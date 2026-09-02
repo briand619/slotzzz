@@ -139,7 +139,7 @@
         { category: CATEGORY.ROYAL_FLUSH, label: 'ROYAL FLUSH', pays: [250, 500, 750, 1000, 4000] },
         { category: CATEGORY.STRAIGHT_FLUSH, label: 'STRAIGHT FLUSH', pays: [40, 80, 120, 160, 200] },
         { category: CATEGORY.FOUR_ACES, label: '4 ACES', pays: [400, 800, 1200, 1600, 2000] },
-        { category: CATEGORY.FOUR_LOW, label: '4 2S, 3S OR 4S', pays: [40, 80, 120, 160, 200] },
+        { category: CATEGORY.FOUR_LOW, label: '4 2S, 3S OR 4S', pays: [80, 160, 240, 320, 400] },
         { category: CATEGORY.FOUR_5_TO_K, label: '4 5S THRU KS', pays: [20, 40, 60, 80, 100] },
         { category: CATEGORY.FULL_HOUSE, label: 'FULL HOUSE', pays: [6, 12, 18, 24, 30] },
         { category: CATEGORY.FLUSH, label: 'FLUSH', pays: [5, 10, 15, 20, 25] },
