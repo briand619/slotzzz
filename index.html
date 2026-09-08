@@ -39,11 +39,67 @@
 <script>
   var params = new URLSearchParams(location.search);
 
+  // Persist credits/bet/game/settings/stats across launches — iOS in
+  // particular can discard a backgrounded home-screen PWA's whole JS state
+  // at any time (no warning, no unload event), so without this every
+  // relaunch silently started over at 400 credits on Jacks or Better.
+  // Deliberately NOT persisted: the in-progress hand itself — see the
+  // phase check in saveState() below for why.
+  var SAVE_KEY = 'vpt-save-v1';
+  function loadSave() {
+    try {
+      var raw = localStorage.getItem(SAVE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (err) {
+      return null; // private browsing / storage disabled — just start fresh
+    }
+  }
+  var save = loadSave();
+
+  var savedGameValid = save && typeof save.paytable === 'string' && VPEngine.PAYTABLES[save.paytable];
+
   var trainer = VideoPokerTrainer.create(document.getElementById('game'), {
-    credits: params.has('credits') ? Number(params.get('credits')) : 400,
-    bet: params.has('bet') ? Number(params.get('bet')) : 5,
-    paytable: params.get('game') || undefined
+    credits: params.has('credits') ? Number(params.get('credits')) : (save ? save.credits : 400),
+    bet: params.has('bet') ? Number(params.get('bet')) : (save ? save.bet : 5),
+    paytable: params.get('game') || (savedGameValid ? save.paytable : undefined),
+    optimalTolerance: save ? save.optimalTolerance : undefined,
+    stats: save ? save.stats : undefined
   });
+
+  function saveState() {
+    try {
+      var s = trainer.getState();
+      // Never write while a hand is dealt-but-undrawn: the visibilitychange/
+      // pagehide listeners below fire on ordinary backgrounding (switching
+      // apps, a notification), not just a hard kill, so without this guard
+      // a save could easily land mid-hand — persisting the bet-deducted
+      // credits with the hand itself unrecoverable. Skipping keeps the last
+      // written snapshot the one from before that deal, so the next launch
+      // rolls back to it and effectively refunds the bet instead.
+      if (s.phase === 'dealt') return;
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        credits: s.credits,
+        bet: s.bet,
+        paytable: s.paytable,
+        optimalTolerance: s.settings.optimalTolerance,
+        stats: s.stats
+      }));
+    } catch (err) {
+      // Storage full or disabled — persistence is a nice-to-have, not
+      // worth surfacing an error over.
+    }
+  }
+  ['draw', 'betchange', 'gamechange', 'settingschange', 'creditschange'].forEach(function (name) {
+    trainer.on(name, saveState);
+  });
+  // Belt-and-suspenders final flush: these fire more reliably than a
+  // per-event save on iOS when the app is actually being backgrounded/
+  // killed, but the discrete event listeners above are what make the
+  // common case (playing normally) durable even when neither fires.
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) saveState();
+  });
+  window.addEventListener('pagehide', saveState);
 
   // URL API: index.html?game=deuces-wild-nsu-100&hand=2S,KS,QS,JS,9D&draw=10S&bet=5&credits=1000
   if (params.has('draw')) trainer.setDrawCards(params.get('draw'));
