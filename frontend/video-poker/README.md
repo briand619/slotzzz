@@ -25,18 +25,32 @@ when you press DRAW and tracks your optimal-play percentage. A HINT button
 marks the optimal hold, and the ANALYSIS panel shows the ranked EV table.
 This works identically across all nine games, including the wild-card ones —
 the EV math accounts for every way a deuce or Joker could complete a hand.
-A REBUY button tops up credits by 500 at any time — useful since a PWA
-session just keeps running rather than resetting the way a fresh page load
-would. On touchscreens, drag a finger across multiple cards to hold (or
-unhold) all of them in one gesture instead of tapping each one — the first
-card touched decides the target state, and every card the finger crosses in
-that same motion is set to match.
+A REBUY button tops up credits by 500 at any time. On touchscreens, drag a
+finger across multiple cards to hold (or unhold) all of them in one gesture
+instead of tapping each one — the first card touched decides the target
+state, and every card the finger crosses in that same motion is set to
+match.
 
 A SETTINGS button opens a modal with **optimal hold tolerance**: a hold within
 this many coins of the exact-best EV is graded OPTIMAL (green), not just an
 exact tie — set it to 0 to require an exact match, where any deviation at all
 is flagged a miss; the default is 1.0. A miss (red) shows what the best hold
 actually was.
+
+**State persists across launches** (index.html only, via `localStorage`):
+credits, bet, the selected game, optimal-hold tolerance, and your
+hands/optimal-play stats all survive closing the app and reopening it —
+including iOS discarding a backgrounded home-screen PWA's entire JS state
+without warning, which otherwise silently reset everything back to 400
+credits on Jacks or Better every relaunch. A dealt-but-undrawn hand is
+deliberately *not* restored: if the app is killed mid-hand, that hand is
+discarded and its bet is refunded (state is only ever snapshotted at safe
+boundaries — after a draw resolves, or a bet/game/settings/credits change —
+never while a hand is in progress), rather than risk double-charging the
+bet on a naive resume. A URL parameter (`?game=`, `?credits=`, `?bet=`)
+always overrides the saved value for that one load. Private browsing or
+disabled storage degrades gracefully to the old start-fresh-every-time
+behavior.
 
 > **Triple Triple Bonus notes:** it includes the game's signature quirk where
 > a quad 2s/3s/4s with an **Ace** kicker matches the top "4 Aces w/2,3,4
@@ -132,6 +146,7 @@ index.html?hand=...&bet=5&credits=1000  set bet and starting credits
     bet: 5,                        // starting bet 1..5 (default 5)
     paytable: 'deuces-wild-nsu-100', // any key from the games table above (default jacks-or-better-9-6)
     optimalTolerance: 1.0,         // coins of EV a hold can be off by and still grade OPTIMAL (default 1.0; 0 = exact match only)
+    stats: { hands: 12, optimal: 10, evLost: 3.4 }, // resume running stats instead of starting at 0 (default all-zero)
     keyboard: true                 // 1-5 hold, space/enter deal/draw, B/M bet, H hint, A analysis, S settings
   });
 
@@ -179,6 +194,7 @@ index.html?hand=...&bet=5&credits=1000  set bet and starting credits
   game.on('gamechange', ({ paytable }) => {}); // game switched (dropdown or setGame)
   game.on('analysis', ({ results }) => {}); // hold analysis finished for a deal
   game.on('settingschange', ({ optimalTolerance }) => {}); // tolerance changed (API or Settings modal)
+  game.on('creditschange', ({ credits }) => {}); // credits changed outside a draw (i.e. addCredits/Rebuy)
 </script>
 ```
 

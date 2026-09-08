@@ -67,7 +67,11 @@
       analysisJob: null,
       hintUsed: false,
       lastVerdict: null,
-      stats: { hands: 0, optimal: 0, evLost: 0 },
+      stats: {
+        hands: (options.stats && options.stats.hands) || 0,
+        optimal: (options.stats && options.stats.optimal) || 0,
+        evLost: (options.stats && options.stats.evLost) || 0
+      },
       settings: {
         // A hold within this many coins of the exact-best EV is still
         // graded OPTIMAL, not just "close" — 0 requires an exact match.
@@ -584,6 +588,7 @@
         state.credits += n;
         renderStatus();
         renderButtons();
+        emit('creditschange', { credits: state.credits });
         return api;
       },
       /* 0 requires an exact-tie hold to grade OPTIMAL; higher values are more forgiving. */
