@@ -132,6 +132,16 @@ const CURATED = {
     { label: '4 low w/ACE kicker (signature tier)', hand: h('3S 3H 3D 3C AH'), hold: [0, 1, 2, 3, 4] },
     { label: '4 low w/2-4 kicker (ordinary tier)', hand: h('3S 3H 3D 3C 7H'), hold: [0, 1, 2, 3, 4] }
   ],
+  // Same per-hand EV math as triple-double-bonus-9-7 above (identical
+  // paytable rows/quadRule) — this only checks that the copy-pasted
+  // paytable entry wasn't transcribed wrong, not new math. The multiplay/
+  // Dream Card layer on top has its own dedicated unit tests in
+  // engine.test.js (chooseDreamCard vs. brute force), since it isn't a
+  // per-hand-EV question this harness is built to check.
+  'triple-double-bonus-dream-card': [
+    { label: '4 aces w/2-4 kicker', hand: h('AS AH AD AC 3H'), hold: [0, 1, 2, 3, 4] },
+    { label: '4 low w/A-4 kicker', hand: h('3S 3H 3D 3C AH'), hold: [0, 1, 2, 3, 4] }
+  ],
   'deuces-wild-nsu-100': [
     { label: 'four deuces', hand: h('2S 2H 2D 2C KH'), hold: [0, 1, 2, 3, 4] },
     { label: 'natural royal flush', hand: h('AS KS QS JS 10S'), hold: [0, 1, 2, 3, 4] },
@@ -153,7 +163,7 @@ const CURATED = {
 const GAME_LIST = [
   'jacks-or-better-9-6', 'bonus-poker-8-5', 'super-aces-bonus-poker', 'bonus-poker-deluxe-9-6',
   'double-double-bonus-9-6', 'triple-double-bonus-9-7', 'triple-triple-bonus',
-  'deuces-wild-nsu-100', 'jokers-wild-kings-or-better'
+  'triple-double-bonus-dream-card', 'deuces-wild-nsu-100', 'jokers-wild-kings-or-better'
 ];
 
 const SEED = 0xC0FFEE;

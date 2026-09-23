@@ -27,6 +27,12 @@
   var DEFAULT_OPTIMAL_TOLERANCE = 1.0;
   var REBUY_AMOUNT = 500;
   var nextInstanceId = 0; // keeps each instance's <label for> / <input id> pair unique on the page
+  /*
+   * Multi-play hands (Dream Card) always fix the Dream Card at position 4
+   * of the shared initial deal — which physical slot shows it is cosmetic
+   * (see chooseDreamCard in engine.js), so there's no reason to randomize it.
+   */
+  var DREAM_CARD_SLOT = 4;
 
   /* Games offered by the built-in variant selector, in menu order. */
   var GAME_LIST = [
@@ -37,6 +43,7 @@
     { key: 'double-double-bonus-9-6', label: 'Double Double Bonus' },
     { key: 'triple-double-bonus-9-7', label: 'Triple Double Bonus' },
     { key: 'triple-triple-bonus', label: 'Triple Triple Bonus' },
+    { key: 'triple-double-bonus-dream-card', label: 'Triple Double Bonus Dream Card' },
     { key: 'deuces-wild-nsu-100', label: 'Deuces Wild' },
     { key: 'jokers-wild-kings-or-better', label: 'Jokers Wild' }
   ];
@@ -45,6 +52,12 @@
     var paytable = typeof spec === 'object' && spec !== null ? spec : E.PAYTABLES[spec || 'jacks-or-better-9-6'];
     if (!paytable) throw new Error('Unknown paytable: ' + spec);
     return paytable;
+  }
+
+  /* Falls back to the paytable's default play count if `n` isn't one of its offered options. */
+  function resolvePlayCount(n, multiplayMeta) {
+    if (n != null && multiplayMeta.options.indexOf(n) !== -1) return n;
+    return multiplayMeta.defaultCount;
   }
 
   function create(container, options) {
@@ -67,6 +80,19 @@
       analysisJob: null,
       hintUsed: false,
       lastVerdict: null,
+      /*
+       * Multi-play (Dream Card games): { count } when the current paytable
+       * declares `multiplay`, else null. The shared initial hand/hold above
+       * still drives strategy (identical EV ranking regardless of count —
+       * see the chooseDreamCard comment in engine.js); multiHands holds
+       * each simultaneous hand's own independent draw once DRAW is pressed.
+       */
+      multiplay: paytable.multiplay
+        ? { count: resolvePlayCount(options.playCount, paytable.multiplay) }
+        : null,
+      multiHands: null,           // [{ finalHand, category, win }, ...] after draw, one per simultaneous hand
+      dreamCardIndex: null,       // which of the 5 dealt positions is this deal's Dream Card, if any
+      dreamCardJob: null,
       stats: {
         hands: (options.stats && options.stats.hands) || 0,
         optimal: (options.stats && options.stats.optimal) || 0,
@@ -97,6 +123,7 @@
       '  </colgroup><tbody></tbody></table>' +
       '  <div class="vpt-msgrow"><div class="vpt-message"></div></div>' +
       '  <div class="vpt-cards"></div>' +
+      '  <div class="vpt-multihands"></div>' +
       '  <div class="vpt-trainer">' +
       '    <button class="vpt-btn vpt-btn-hint" style="flex:0 0 auto;font-size:13px;padding:6px 14px;">HINT</button>' +
       '    <div class="vpt-verdict"></div>' +
@@ -104,6 +131,7 @@
       '  </div>' +
       '  <div class="vpt-status">' +
       '    <select class="vpt-gameselect"></select>' +
+      '    <select class="vpt-playcount"></select>' +
       '    <span><span class="vpt-bet"></span>&nbsp;&nbsp;<span class="vpt-win"></span></span>' +
       '    <span class="vpt-credit"></span>' +
       '  </div>' +
@@ -156,6 +184,8 @@
       verdict: root.querySelector('.vpt-verdict'),
       stats: root.querySelector('.vpt-stats'),
       gameSelect: root.querySelector('.vpt-gameselect'),
+      playCountSelect: root.querySelector('.vpt-playcount'),
+      multiHands: root.querySelector('.vpt-multihands'),
       bet: root.querySelector('.vpt-bet'),
       win: root.querySelector('.vpt-win'),
       credit: root.querySelector('.vpt-credit'),
@@ -193,6 +223,21 @@
       el.gameSelect.value = '__custom__';
     }
 
+    /* play-count selector: only relevant to multiplay (Dream Card) games */
+    function renderPlayCountSelect() {
+      el.playCountSelect.innerHTML = '';
+      el.playCountSelect.classList.toggle('vpt-hidden', !paytable.multiplay);
+      if (!paytable.multiplay) return;
+      paytable.multiplay.options.forEach(function (n) {
+        var opt = document.createElement('option');
+        opt.value = n;
+        opt.textContent = n + '-PLAY';
+        el.playCountSelect.appendChild(opt);
+      });
+      el.playCountSelect.value = state.multiplay.count;
+    }
+    renderPlayCountSelect();
+
     function renderPaytableRows() {
       el.paytableBody.innerHTML = '';
       paytable.rows.forEach(function (row) {
@@ -220,12 +265,13 @@
 
     /* ---------- rendering ---------- */
 
-    function renderCard(cardEl, card) {
+    function renderCard(cardEl, card, isDreamCard) {
+      var dreamTag = isDreamCard ? '<div class="vpt-dreamtag">DREAM CARD</div>' : '';
       if (E.isJoker(card)) {
         cardEl.className = 'vpt-card vpt-joker';
         cardEl.innerHTML =
           '<div class="vpt-corner">JKR</div>' +
-          '<div class="vpt-joker-face"><div class="vpt-joker-label">JOKER</div></div>';
+          '<div class="vpt-joker-face"><div class="vpt-joker-label">JOKER</div></div>' + dreamTag;
         return;
       }
       var suit = E.suitOf(card);
@@ -242,7 +288,7 @@
         ? '<div class="vpt-wildstack"><span>WILD</span><span>WILD</span><span>WILD</span><span>WILD</span></div>'
         : '';
       cardEl.innerHTML =
-        '<div class="vpt-corner">' + rankChar + '<span>' + glyph + '</span></div>' + wildStack + center;
+        '<div class="vpt-corner">' + rankChar + '<span>' + glyph + '</span></div>' + wildStack + center + dreamTag;
     }
 
     function renderHand() {
@@ -250,7 +296,7 @@
         var slot = el.slots[i];
         var cardEl = slot.querySelector('.vpt-card');
         if (state.hand) {
-          renderCard(cardEl, state.hand[i]);
+          renderCard(cardEl, state.hand[i], state.dreamCardIndex === i);
         } else {
           cardEl.className = 'vpt-card vpt-back';
           cardEl.innerHTML = '';
@@ -259,6 +305,46 @@
         slot.classList.toggle('vpt-disabled', state.phase !== 'dealt');
         slot.classList.remove('vpt-hint', 'vpt-best');
       }
+    }
+
+    /* Compact rank+suit label used in the multi-hand results grid — full
+       card art for up to 10 x 5 = 50 simultaneous cards would overwhelm a
+       phone screen, so these are plain colored text, not `.vpt-card`s. */
+    function miniCardHtml(card) {
+      if (E.isJoker(card)) return '<span class="vpt-minicard">JKR</span>';
+      var suit = E.suitOf(card);
+      var red = suit === 1 || suit === 2;
+      return '<span class="vpt-minicard ' + (red ? 'vpt-redsuit' : 'vpt-blacksuit') + '">' +
+        E.RANK_CHARS[E.rankOf(card)] + E.SUIT_GLYPHS[suit] + '</span>';
+    }
+
+    function renderMultiHands() {
+      var container = el.multiHands;
+      if (!state.multiplay) {
+        container.innerHTML = '';
+        container.classList.remove('vpt-open');
+        return;
+      }
+      container.classList.add('vpt-open');
+      if (!state.multiHands) {
+        var placeholders = [];
+        for (var i = 0; i < state.multiplay.count; i++) {
+          placeholders.push('<div class="vpt-multihand-row vpt-pending">HAND ' + (i + 1) + '</div>');
+        }
+        container.innerHTML = placeholders.join('');
+        return;
+      }
+      container.innerHTML = state.multiHands.map(function (h, idx) {
+        var cardsHtml = h.finalHand.map(miniCardHtml).join('');
+        var resultText = h.category !== E.CATEGORY.NOTHING
+          ? E.CATEGORY_NAMES[h.category] + (h.win > 0 ? '  ' + h.win : '')
+          : '';
+        return '<div class="vpt-multihand-row' + (h.win > 0 ? ' vpt-win' : '') + '">' +
+          '<span class="vpt-multihand-num">' + (idx + 1) + '</span>' +
+          '<span class="vpt-multihand-cards">' + cardsHtml + '</span>' +
+          '<span class="vpt-multihand-result">' + resultText + '</span>' +
+          '</div>';
+      }).join('');
     }
 
     function setMessage(text, mode) {
@@ -278,8 +364,23 @@
       if (tr) tr.cells[state.bet].classList.add('vpt-pay-hit');
     }
 
+    /*
+     * Multiplay always doubles the wager as the Dream Card fee (per the
+     * earlier design decision: the fee scales with the full multi-hand
+     * wager, not a flat one-hand amount) — see the paytable's own comment
+     * in engine.js for why this combination isn't a documented real game.
+     */
+    function wagerMultiplier() {
+      if (!state.multiplay) return 1;
+      return state.multiplay.count * (paytable.dreamCard ? 2 : 1);
+    }
+    function totalWager() {
+      return state.bet * wagerMultiplier();
+    }
+
     function renderStatus() {
-      el.bet.textContent = 'BET ' + state.bet;
+      var mult = wagerMultiplier();
+      el.bet.textContent = 'BET ' + state.bet + (mult > 1 ? ' × ' + mult + ' = ' + totalWager() : '');
       el.win.textContent = 'WIN ' + state.win;
       el.credit.textContent = 'CREDIT ' + state.credits;
       el.paytableCols.forEach(function (col, idx) {
@@ -299,11 +400,17 @@
 
     function renderButtons() {
       var dealt = state.phase === 'dealt';
+      // 'dealing': a Dream Card pick is being computed asynchronously —
+      // bet's already charged for this deal, so lock out everything that
+      // could double-charge it or invalidate the in-flight computation,
+      // same as while a hand is actually dealt.
+      var locked = state.phase !== 'attract';
       el.deal.textContent = dealt ? 'Draw' : 'Deal';
-      el.deal.disabled = !dealt && state.credits < state.bet && !state.queuedHand;
-      el.betOne.disabled = dealt;
-      el.betMax.disabled = dealt || (state.credits < 5 && !state.queuedHand);
+      el.deal.disabled = locked ? !dealt : state.credits < totalWager() && !state.queuedHand;
+      el.betOne.disabled = locked;
+      el.betMax.disabled = locked || (state.credits < 5 * wagerMultiplier() && !state.queuedHand);
       el.hint.disabled = !dealt;
+      el.playCountSelect.disabled = locked;
     }
 
     function holdLabel(item) {
@@ -370,31 +477,28 @@
 
     /* ---------- game actions ---------- */
 
-    function deal(forcedHand) {
-      if (state.phase === 'dealt') return;
-      var forced = forcedHand || state.queuedHand;
-      if (!forced && state.credits < state.bet) {
-        setMessage('INSERT CREDITS', 'info');
-        return;
-      }
-      state.credits -= state.bet;
-      state.win = 0;
-      var includeJoker = paytable.deck === 53;
-      state.hand = forced ? forced.slice() : null;
-      if (!state.hand) {
-        var deck = E.shuffledDeck([], undefined, includeJoker);
-        state.hand = deck.slice(0, 5);
-        state.drawStack = deck.slice(5);
+    /*
+     * Finishes a deal once the 5-card hand is actually known — reached
+     * either synchronously (forced hand, or no Dream Card this time) or
+     * asynchronously (Dream Card triggered — see deal() below). Splitting
+     * this out is what lets both paths share one completion routine
+     * instead of duplicating the phase/render/emit bookkeeping.
+     */
+    function finishDeal(hand) {
+      state.hand = hand;
+      if (state.multiplay) {
+        state.drawStack = null; // each simultaneous hand draws independently in draw()
       } else {
+        var includeJoker = paytable.deck === 53;
         state.drawStack = E.shuffledDeck(state.hand, undefined, includeJoker);
-      }
-      if (state.queuedDraw) {
-        var forcedDraw = state.queuedDraw.filter(function (c) {
-          return state.hand.indexOf(c) === -1;
-        });
-        state.drawStack = forcedDraw.concat(state.drawStack.filter(function (c) {
-          return forcedDraw.indexOf(c) === -1;
-        }));
+        if (state.queuedDraw) {
+          var forcedDraw = state.queuedDraw.filter(function (c) {
+            return state.hand.indexOf(c) === -1;
+          });
+          state.drawStack = forcedDraw.concat(state.drawStack.filter(function (c) {
+            return forcedDraw.indexOf(c) === -1;
+          }));
+        }
       }
       state.queuedHand = null;
       state.queuedDraw = null;
@@ -415,10 +519,59 @@
 
       startAnalysis();
       renderHand();
+      renderMultiHands();
       renderStatus();
       renderButtons();
       renderAnalysisPanel(null);
-      emit('deal', { hand: state.hand.map(E.cardToString), bet: state.bet });
+      emit('deal', {
+        hand: state.hand.map(E.cardToString),
+        bet: state.bet,
+        dreamCardIndex: state.dreamCardIndex,
+        playCount: state.multiplay ? state.multiplay.count : 1
+      });
+    }
+
+    function deal(forcedHand) {
+      // 'dealing' (a Dream Card pick is being computed asynchronously,
+      // below) blocks re-entry same as 'dealt' — the bet for THIS deal is
+      // already charged, so starting another would double-charge it.
+      if (state.phase !== 'attract') return;
+      var forced = forcedHand || state.queuedHand;
+      if (!forced && state.credits < totalWager()) {
+        setMessage('INSERT CREDITS', 'info');
+        return;
+      }
+      if (state.dreamCardJob) { state.dreamCardJob.cancel(); state.dreamCardJob = null; }
+      state.credits -= totalWager();
+      state.win = 0;
+      state.multiHands = null;
+      state.dreamCardIndex = null;
+      var includeJoker = paytable.deck === 53;
+
+      if (forced) {
+        finishDeal(forced.slice());
+        return;
+      }
+
+      if (paytable.dreamCard && Math.random() < paytable.dreamCard.probability) {
+        var four = E.shuffledDeck([], undefined, includeJoker).slice(0, 4);
+        state.phase = 'dealing';
+        setMessage('CHOOSING DREAM CARD…', 'info');
+        renderStatus();
+        renderButtons();
+        var job = E.chooseDreamCardAsync(four, state.bet, paytable);
+        state.dreamCardJob = job;
+        job.promise.then(function (result) {
+          if (state.dreamCardJob !== job) return; // superseded — see setGame/dealHand
+          state.dreamCardJob = null;
+          state.dreamCardIndex = DREAM_CARD_SLOT;
+          finishDeal(four.concat([result.card]));
+        }, function () { /* cancelled */ });
+        return;
+      }
+
+      var deck = E.shuffledDeck([], undefined, includeJoker);
+      finishDeal(deck.slice(0, 5));
     }
 
     function finishAnalysisSync() {
@@ -444,12 +597,44 @@
       var tolerance = Math.max(state.settings.optimalTolerance, EV_EPSILON);
       var wasOptimal = evDiff <= tolerance;
 
-      var stackIdx = 0;
-      for (var i = 0; i < 5; i++) {
-        if (!state.held[i]) state.hand[i] = state.drawStack[stackIdx++];
+      /*
+       * `category`/`won` drive the paytable highlight and win message; for
+       * a single hand that's just its own outcome. For multiplay there's
+       * no single outcome — each of the N simultaneous hands draws its own
+       * independent replacements from its own copy of the remaining deck
+       * (the real multi-play mechanic), and `won` becomes the sum across
+       * all of them. `category` becomes whichever hand paid the most (an
+       * arbitrary but reasonable choice for which single paytable row to
+       * flash), for use only by highlightPayRow/setMessage below.
+       */
+      var category, won;
+      if (state.multiplay) {
+        var includeJoker = paytable.deck === 53;
+        won = 0;
+        category = E.CATEGORY.NOTHING;
+        var bestHandWin = -1;
+        state.multiHands = [];
+        for (var n = 0; n < state.multiplay.count; n++) {
+          var finalHand = state.hand.slice();
+          var handDeck = E.shuffledDeck(state.hand, undefined, includeJoker);
+          var drawn = 0;
+          for (var i = 0; i < 5; i++) {
+            if (!state.held[i]) finalHand[i] = handDeck[drawn++];
+          }
+          var handCategory = E.resolveCategory(finalHand, paytable);
+          var handWin = E.payout(handCategory, state.bet, paytable);
+          won += handWin;
+          state.multiHands.push({ finalHand: finalHand, category: handCategory, win: handWin });
+          if (handWin > bestHandWin) { bestHandWin = handWin; category = handCategory; }
+        }
+      } else {
+        var stackIdx = 0;
+        for (var j = 0; j < 5; j++) {
+          if (!state.held[j]) state.hand[j] = state.drawStack[stackIdx++];
+        }
+        category = E.resolveCategory(state.hand, paytable);
+        won = E.payout(category, state.bet, paytable);
       }
-      var category = E.resolveCategory(state.hand, paytable);
-      var won = E.payout(category, state.bet, paytable);
       state.credits += won;
       state.win = won;
       state.phase = 'attract';
@@ -473,6 +658,7 @@
       }
 
       renderHand();
+      renderMultiHands();
       if (wasOptimal) {
         el.verdict.textContent = wasExact
           ? '✓ OPTIMAL HOLD · EV ' + best.ev.toFixed(3)
@@ -492,7 +678,18 @@
       renderAnalysisPanel(mask);
 
       emit('draw', {
-        finalHand: state.hand.map(E.cardToString),
+        // Single-play: the hand itself, mutated in place by the draw
+        // above, so this is the actual final hand. Multiplay has no one
+        // final hand — see multiHands instead.
+        finalHand: state.multiplay ? null : state.hand.map(E.cardToString),
+        multiHands: state.multiplay ? state.multiHands.map(function (h) {
+          return {
+            finalHand: h.finalHand.map(E.cardToString),
+            category: h.category,
+            categoryName: E.CATEGORY_NAMES[h.category],
+            won: h.win
+          };
+        }) : null,
         category: category,
         categoryName: E.CATEGORY_NAMES[category],
         won: won,
@@ -530,7 +727,7 @@
       dealHand: function (cards) {
         var hand = E.parseHand(cards);
         if (hand.length !== 5) throw new Error('dealHand needs exactly 5 cards');
-        if (state.phase === 'dealt') state.phase = 'attract';
+        if (state.phase !== 'attract') state.phase = 'attract';
         deal(hand);
         return api;
       },
@@ -545,9 +742,12 @@
       /*
        * Force the replacement cards. Cards are dealt in order to discarded
        * positions left to right. Applies to the current hand if one is live,
-       * otherwise to the next deal.
+       * otherwise to the next deal. Not supported for multiplay games —
+       * each simultaneous hand draws its own independent replacements, so
+       * there's no single "the" draw stack to force.
        */
       setDrawCards: function (cards) {
+        if (state.multiplay) throw new Error('setDrawCards is not supported for multiplay games');
         var draw = E.parseHand(cards);
         if (state.phase === 'dealt') {
           var filtered = draw.filter(function (c) { return state.hand.indexOf(c) === -1; });
@@ -577,11 +777,28 @@
         return api;
       },
       setBet: function (n) {
-        if (state.phase === 'dealt') return api;
+        if (state.phase !== 'attract') return api;
         state.bet = Math.min(5, Math.max(1, Math.round(n)));
         renderStatus();
         renderButtons();
         emit('betchange', { bet: state.bet });
+        return api;
+      },
+      /*
+       * Multiplay games only: how many simultaneous hands to play (one of
+       * the paytable's declared `multiplay.options`, e.g. 3/5/10). No-op
+       * for a non-multiplay game or while a hand is in progress.
+       */
+      setPlayCount: function (n) {
+        if (!paytable.multiplay || state.phase !== 'attract') return api;
+        var count = Math.round(n);
+        if (paytable.multiplay.options.indexOf(count) === -1) return api;
+        state.multiplay.count = count;
+        el.playCountSelect.value = count;
+        renderStatus();
+        renderButtons();
+        renderMultiHands();
+        emit('playcountchange', { playCount: count });
         return api;
       },
       addCredits: function (n) {
@@ -607,6 +824,7 @@
        */
       setGame: function (spec) {
         if (state.analysisJob) { state.analysisJob.cancel(); state.analysisJob = null; }
+        if (state.dreamCardJob) { state.dreamCardJob.cancel(); state.dreamCardJob = null; }
         paytable = resolvePaytable(spec);
         state.phase = 'attract';
         state.hand = null;
@@ -618,18 +836,23 @@
         state.win = 0;
         state.lastVerdict = null;
         state.stats = { hands: 0, optimal: 0, evLost: 0 };
+        state.multiplay = paytable.multiplay ? { count: paytable.multiplay.defaultCount } : null;
+        state.multiHands = null;
+        state.dreamCardIndex = null;
         if (paytable.id && GAME_LIST.some(function (g) { return g.key === paytable.id; })) {
           el.gameSelect.value = paytable.id;
         } else {
           el.gameSelect.value = '__custom__';
         }
         renderPaytableRows();
+        renderPlayCountSelect();
         clearPayHighlight();
         setMessage('PLAY 1 TO 5 CREDITS', 'info');
         el.verdict.textContent = '';
         el.verdict.className = 'vpt-verdict';
         el.analysisPanel.classList.remove('vpt-open');
         renderHand();
+        renderMultiHands();
         renderStatus();
         renderStats();
         renderButtons();
@@ -651,6 +874,7 @@
       },
       getState: function () {
         return {
+          // 'attract' | 'dealing' (Dream Card pick in flight — see deal()) | 'dealt'
           phase: state.phase,
           paytable: paytable.id || paytable.name,
           hand: state.hand ? state.hand.map(E.cardToString) : null,
@@ -664,7 +888,14 @@
             evLost: state.stats.evLost
           },
           settings: { optimalTolerance: state.settings.optimalTolerance },
-          lastVerdict: state.lastVerdict
+          lastVerdict: state.lastVerdict,
+          multiplay: state.multiplay ? {
+            count: state.multiplay.count,
+            dreamCardIndex: state.dreamCardIndex,
+            hands: state.multiHands ? state.multiHands.map(function (h) {
+              return { finalHand: h.finalHand.map(E.cardToString), category: h.category, win: h.win };
+            }) : null
+          } : null
         };
       },
       on: function (name, cb) {
@@ -687,7 +918,7 @@
       api.setBet(state.bet >= 5 ? 1 : state.bet + 1);
     });
     el.betMax.addEventListener('click', function () {
-      if (state.phase === 'dealt') return;
+      if (state.phase !== 'attract') return;
       api.setBet(5);
       deal();
     });
@@ -723,6 +954,9 @@
     });
     el.gameSelect.addEventListener('change', function () {
       if (el.gameSelect.value !== '__custom__') api.setGame(el.gameSelect.value);
+    });
+    el.playCountSelect.addEventListener('change', function () {
+      api.setPlayCount(Number(el.playCountSelect.value));
     });
 
     /*
@@ -800,6 +1034,7 @@
     setMessage('PLAY 1 TO 5 CREDITS', 'info');
     el.verdict.textContent = '';
     renderHand();
+    renderMultiHands();
     renderStatus();
     renderStats();
     renderButtons();

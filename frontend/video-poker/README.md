@@ -4,7 +4,7 @@ A self-contained, no-build video poker trainer styled after IGT Game King
 machines: blue CRT screen, yellow paytable with the active bet column in red,
 white cards with HELD tags, and a yellow button deck.
 
-Nine games are built in, switchable from the dropdown in the status bar
+Ten games are built in, switchable from the dropdown in the status bar
 (or via API/URL — see below):
 
 | Game | Family | Notes |
@@ -16,6 +16,7 @@ Nine games are built in, switchable from the dropdown in the status bar
 | Double Double Bonus (9/6) | standard | Aces and 2s-4s quads further split by kicker rank |
 | Triple Double Bonus (9/7) | standard | same mechanic as DDB, bigger bonus tiers |
 | Triple Triple Bonus | standard | same mechanic, largest top tier (see caveat below) |
+| Triple Double Bonus Dream Card | standard, multiplay | 3/5/10 simultaneous hands + the Dream Card feature (see below) |
 | Deuces Wild (full-pay NSU) | wild | the four 2s are wild; pays 3-of-a-kind and up only |
 | Jokers Wild (Kings or Better) | wild | one Joker added to the deck (53 cards) as wild |
 
@@ -23,8 +24,11 @@ On every deal the trainer computes the **exact** expected value of all 32
 possible hold combinations by enumerating every draw, then grades your hold
 when you press DRAW and tracks your optimal-play percentage. A HINT button
 marks the optimal hold, and the ANALYSIS panel shows the ranked EV table.
-This works identically across all nine games, including the wild-card ones —
-the EV math accounts for every way a deuce or Joker could complete a hand.
+This works identically across all ten games, including the wild-card and
+multiplay ones — the EV math accounts for every way a deuce or Joker could
+complete a hand, and multiplay's optimal hold is identical to single-play's
+(EV is additive across independent hands, so it can't change which hold
+ranks best — see the "Dream Card / multiplay" section below).
 A REBUY button tops up credits by 500 at any time. On touchscreens, drag a
 finger across multiple cards to hold (or unhold) all of them in one gesture
 instead of tapping each one — the first card touched decides the target
@@ -63,6 +67,24 @@ behavior.
 > exact casino paytable. Deuces Wild and Jokers Wild pay their royal flush
 > proportionally to bet (no 5-coin jackpot jump), matching how those games
 > are typically paid, unlike the Jacks-or-Better family's 4000-coin jump.
+
+> **Dream Card / multiplay notes:** real IGT "Dream Card" games are
+> single-hand only — you pay double your normal wager as a flat fee to
+> enable the feature, and on some fraction of deals (26.7% for Triple
+> Double Bonus, per Wizard of Odds) 4 cards are dealt at random and the 5th
+> is chosen by the game to exactly maximize the resulting hand's best-hold
+> EV (not wild — once dealt it's an ordinary card for the rest of the
+> hand). Multiplay (3/5/10 simultaneous hands off one shared deal) is a
+> separate, unrelated IGT product. Combining the two — as this variant does
+> — isn't a documented casino game; it's an extrapolation, in the same
+> spirit as the Triple Triple Bonus approximation above. The fee doubles
+> the *entire* multi-hand wager (3-play at 5 coins/hand costs 30 total: 15
+> base + 15 fee), and the Dream Card, when it triggers, always ends up at
+> the 5th card position of the one shared initial deal — which of the 5
+> physical card slots displays it is purely cosmetic and doesn't affect any
+> of the math. See `chooseDreamCard`/`chooseDreamCardAsync` in `js/engine.js`
+> for how the optimal 5th card is found (exactly, not approximated) without
+> the naive ~48x-slower brute-force cost.
 
 ## Running
 
@@ -147,6 +169,7 @@ index.html?hand=...&bet=5&credits=1000  set bet and starting credits
     paytable: 'deuces-wild-nsu-100', // any key from the games table above (default jacks-or-better-9-6)
     optimalTolerance: 1.0,         // coins of EV a hold can be off by and still grade OPTIMAL (default 1.0; 0 = exact match only)
     stats: { hands: 12, optimal: 10, evLost: 3.4 }, // resume running stats instead of starting at 0 (default all-zero)
+    playCount: 5,                  // multiplay games only: 3/5/10 (default is the paytable's own default, e.g. 3)
     keyboard: true                 // 1-5 hold, space/enter deal/draw, B/M bet, H hint, A analysis, S settings
   });
 
@@ -154,13 +177,19 @@ index.html?hand=...&bet=5&credits=1000  set bet and starting credits
   game.setGame('jokers-wild-kings-or-better');
   game.setGame({ /* ...a custom paytable object, same shape as VideoPokerTrainer.Engine.PAYTABLES entries */ });
 
+  // Multiplay games only (a no-op elsewhere): change how many simultaneous
+  // hands are in play; must be one of the paytable's declared options.
+  game.setPlayCount(10);
+
   // Deal a specific hand right now:
   game.dealHand(['AS', 'KS', 'QS', 'JS', '9D']);
 
   // Or stage cards for the next DEAL button press:
   game.queueHand('JS JH 6D 6C 2H');
 
-  // Control what the discards are replaced with (dealt left to right):
+  // Control what the discards are replaced with (dealt left to right).
+  // Not supported for multiplay games — each simultaneous hand draws its
+  // own independent replacements, so there's no single draw stack to force.
   game.setDrawCards(['10S']);
 
   // Drive the game programmatically:
@@ -178,20 +207,37 @@ index.html?hand=...&bet=5&credits=1000  set bet and starting credits
   // Snapshot of everything:
   game.getState();
   // { phase, paytable, hand, held, bet, credits, win,
-  //   stats: { hands, optimal, evLost }, lastVerdict }
+  //   stats: { hands, optimal, evLost }, lastVerdict,
+  //   multiplay: { count, dreamCardIndex, hands } | null }
+  // phase is 'attract' | 'dealing' | 'dealt' — 'dealing' is the brief async
+  // window while a triggered Dream Card's optimal 5th card is being
+  // computed (deal/draw/bet/game-switch are all locked out until it
+  // resolves, same as while a hand is actually dealt). multiplay is null
+  // for an ordinary single-hand game; for a multiplay game, `hands` is
+  // null until DRAW is pressed, then one { finalHand, category, win } per
+  // simultaneous hand.
 
   // Events:
-  game.on('deal', ({ hand, bet }) => {});
+  game.on('deal', ({ hand, bet, dreamCardIndex, playCount }) => {});
+  // dreamCardIndex is null unless this deal's Dream Card triggered (then
+  // it's always 4); playCount is 1 for a non-multiplay game.
   game.on('holdchange', ({ held }) => {});
-  game.on('draw', ({ finalHand, categoryName, won, credits,
+  game.on('draw', ({ finalHand, multiHands, categoryName, won, credits,
                      playerHold, optimalHold, wasOptimal, wasExact,
                      playerEV, optimalEV, evLost, hintUsed }) => {});
+  // Single-play: finalHand is the actual final hand, multiHands is null.
+  // Multiplay: finalHand is null (there's no single final hand), and
+  // multiHands is an array of { finalHand, category, categoryName, won },
+  // one per simultaneous hand; won and credits are already summed across
+  // all of them; categoryName is whichever hand paid the most.
   // wasOptimal is true whenever the player's EV is within the current
   // optimalTolerance setting of the best EV (wasExact is the tighter,
   // tolerance-independent check for an exact tie) - see "Notes on the
-  // math" below.
+  // math" below. Grading is against the single dealt hand regardless of
+  // play count — see "Notes on the math" for why multiplay can't change it.
   game.on('betchange', ({ bet }) => {});
   game.on('gamechange', ({ paytable }) => {}); // game switched (dropdown or setGame)
+  game.on('playcountchange', ({ playCount }) => {}); // multiplay hand count changed
   game.on('analysis', ({ results }) => {}); // hold analysis finished for a deal
   game.on('settingschange', ({ optimalTolerance }) => {}); // tolerance changed (API or Settings modal)
   game.on('creditschange', ({ credits }) => {}); // credits changed outside a draw (i.e. addCredits/Rebuy)
@@ -245,7 +291,7 @@ node frontend/video-poker/test/engine.test.js
 
 There's also a Monte Carlo verification harness that cross-checks the exact,
 exhaustive-enumeration EV (`analyzeHolds`) against independent random
-sampling, across all 9 games:
+sampling, across all 10 games:
 
 ```bash
 node frontend/video-poker/test/simulate.js
@@ -300,3 +346,15 @@ asserts against a specific target RTP.
   Triple Bonus) are resolved from the same base hand classification, so
   adding a new quad-tier paytable is a data-only change (`quadRule` +
   `rows`) — see `PAYTABLES` in `js/engine.js`.
+- Multiplay doesn't change optimal strategy: every simultaneous hand draws
+  independently from the same paytable, so total EV for a given hold is
+  just N times the single-hand EV — a pure scalar multiple that can never
+  change which hold ranks best. The trainer reuses the exact same
+  `analyzeHolds` computation on the one shared dealt hand regardless of
+  play count; only the win/credit totals and the results grid scale by N.
+- The Dream Card feature's optimal 5th card is found exactly, not
+  approximated, but not by the ~48x-slower naive approach of running a full
+  32-hold `analyzeHolds` per candidate either: 16 of the 32 holds never
+  hold that position at all, so they can't be what decides between
+  candidates and are computed once; only the 16 holds that do depend on it
+  are recomputed per candidate. See `chooseDreamCard` in `js/engine.js`.

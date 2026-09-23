@@ -223,10 +223,12 @@ frequency ≈ 20.30%, grand pays 150× total stake).
 ## Video Poker Trainer (Frontend)
 
 `frontend/video-poker/` contains a self-contained, no-build video poker
-trainer styled after IGT Game King machines, with nine switchable games —
+trainer styled after IGT Game King machines, with ten switchable games —
 Jacks or Better, Bonus Poker, Super Aces Bonus Poker, Bonus Poker Deluxe,
-Double Double Bonus, Triple Double Bonus, Triple Triple Bonus, Deuces Wild,
-and Jokers Wild — each with
+Double Double Bonus, Triple Double Bonus, Triple Triple Bonus, Triple
+Double Bonus Dream Card (3/5/10 simultaneous hands, plus the Dream Card
+feature that occasionally pre-optimizes one card of the shared deal),
+Deuces Wild, and Jokers Wild — each with
 exact expected-value analysis of all 32 hold combinations on every deal
 (including wild-card hands), optimal-play grading, hints, and a ranked EV
 panel. Hands can be fed to it three ways: URL parameters
