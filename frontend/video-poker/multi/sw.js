@@ -9,7 +9,7 @@
 // The classic app's worker keeps vpt-cache-*; each app only ever touches
 // caches with its own prefix, since cache storage is shared by the origin.
 var CACHE_PREFIX = 'vpm-cache-';
-var CACHE_NAME = CACHE_PREFIX + 'v1';
+var CACHE_NAME = CACHE_PREFIX + 'v2';
 var APP_SHELL = [
   './',
   './index.html',

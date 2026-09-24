@@ -101,7 +101,7 @@
   });
   window.addEventListener('pagehide', saveState);
 
-  // URL API: index.html?game=deuces-wild-nsu-100&hand=2S,KS,QS,JS,9D&draw=10S&bet=5&credits=1000
+  // URL API: index.html?game=deuces-wild-full-pay&hand=2S,KS,QS,JS,9D&draw=10S&bet=5&credits=1000
   if (params.has('draw')) trainer.setDrawCards(params.get('draw'));
   if (params.has('hand')) trainer.dealHand(params.get('hand'));
 

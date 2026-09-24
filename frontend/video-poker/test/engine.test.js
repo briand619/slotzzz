@@ -211,7 +211,7 @@ test('EV analysis runs cleanly on every standard-family paytable', () => {
 
 /* ---------------- Deuces Wild ---------------- */
 
-const DEUCES = E.PAYTABLES['deuces-wild-nsu-100'];
+const DEUCES = E.PAYTABLES['deuces-wild-full-pay'];
 
 test('Deuces Wild: four deuces beats everything, regardless of the 5th card', () => {
   assert.strictEqual(E.resolveCategory(hand('2S 2H 2D 2C AH'), DEUCES), E.CATEGORY.FOUR_DEUCES);
@@ -252,7 +252,7 @@ test('Deuces Wild: no deuces falls back to the plain evaluator, and pairs pay no
 test('Deuces Wild EV: pat natural royal is the clear best hold', () => {
   const results = E.analyzeHolds(hand('AS KS QS JS 10S'), 5, DEUCES);
   assert.strictEqual(results[0].mask, 31);
-  assert.strictEqual(results[0].ev, 1250);
+  assert.strictEqual(results[0].ev, 4000);
 });
 
 /* ---------------- Jokers Wild ---------------- */
@@ -292,7 +292,7 @@ test('Jokers Wild: two natural pairs plus the joker is a full house', () => {
 test('Jokers Wild EV: pat natural royal is the clear best hold', () => {
   const results = E.analyzeHolds(hand('AS KS QS JS 10S'), 5, JOKERS);
   assert.strictEqual(results[0].mask, 31);
-  assert.strictEqual(results[0].ev, 1250);
+  assert.strictEqual(results[0].ev, 4000);
 });
 
 test('Jokers Wild deck includes the joker for draws', () => {

@@ -39,7 +39,7 @@
     { key: 'double-double-bonus-9-6', label: 'Double Double Bonus' },
     { key: 'triple-double-bonus-9-7', label: 'Triple Double Bonus' },
     { key: 'triple-triple-bonus', label: 'Triple Triple Bonus' },
-    { key: 'deuces-wild-nsu-100', label: 'Deuces Wild' },
+    { key: 'deuces-wild-full-pay', label: 'Deuces Wild' },
     { key: 'jokers-wild-kings-or-better', label: 'Jokers Wild' }
   ];
 

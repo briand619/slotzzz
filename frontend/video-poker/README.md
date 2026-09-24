@@ -16,7 +16,7 @@ Nine games are built in, switchable from the dropdown in the status bar
 | Double Double Bonus (9/6) | standard | Aces and 2s-4s quads further split by kicker rank |
 | Triple Double Bonus (9/7) | standard | same mechanic as DDB, bigger bonus tiers |
 | Triple Triple Bonus | standard | same mechanic, largest top tier (see caveat below) |
-| Deuces Wild (full-pay NSU) | wild | the four 2s are wild; pays 3-of-a-kind and up only |
+| Deuces Wild (full pay, 25/15/9/5/3/2) | wild | the four 2s are wild; pays 3-of-a-kind and up only |
 | Jokers Wild (Kings or Better) | wild | one Joker added to the deck (53 cards) as wild |
 
 On every deal the trainer computes the **exact** expected value of all 32
@@ -60,9 +60,9 @@ behavior.
 > super-tier on top of that; the exact condition for that rule varies enough
 > across sources that reproducing it with confidence wasn't possible, so pay
 > amounts for the tiers modeled here are a reasonable approximation, not an
-> exact casino paytable. Deuces Wild and Jokers Wild pay their royal flush
-> proportionally to bet (no 5-coin jackpot jump), matching how those games
-> are typically paid, unlike the Jacks-or-Better family's 4000-coin jump.
+> exact casino paytable. Every game, Deuces Wild and Jokers Wild included,
+> pays the natural royal 800 per coin at max bet (4000 for 5 coins), per the
+> Wizard of Odds tables.
 
 This app is single-line, classic games only. Multi-line play (Triple / Five /
 Ten Play) is a separate app in [`multi/`](multi/README.md) that shares this
@@ -132,7 +132,7 @@ A hand is an array of 5 cards, or a single string: `"AS KS QS JS 9D"` /
 ### 1. URL parameters (zero code)
 
 ```
-index.html?game=deuces-wild-nsu-100     pick a game (see the table above for keys)
+index.html?game=deuces-wild-full-pay     pick a game (see the table above for keys)
 index.html?hand=AS,KS,QS,JS,9S          deal this hand immediately
 index.html?hand=...&draw=10S,4H         force the replacement cards, in order
 index.html?hand=...&bet=5&credits=1000  set bet and starting credits
@@ -148,7 +148,7 @@ index.html?hand=...&bet=5&credits=1000  set bet and starting credits
   const game = VideoPokerTrainer.create(document.getElementById('game'), {
     credits: 400,                  // starting credits (default 400)
     bet: 5,                        // starting bet 1..5 (default 5)
-    paytable: 'deuces-wild-nsu-100', // any key from the games table above (default jacks-or-better-9-6)
+    paytable: 'deuces-wild-full-pay', // any key from the games table above (default jacks-or-better-9-6)
     optimalTolerance: 1.0,         // coins of EV a hold can be off by and still grade OPTIMAL (default 1.0; 0 = exact match only)
     stats: { hands: 12, optimal: 10, evLost: 3.4 }, // resume running stats instead of starting at 0 (default all-zero)
     keyboard: true                 // 1-5 hold, space/enter deal/draw, B/M bet, H hint, A analysis, S settings
@@ -209,7 +209,7 @@ embedded trainer without touching its code:
 
 ```js
 const frame = document.querySelector('iframe');
-frame.contentWindow.postMessage({ type: 'vpt:setGame', game: 'deuces-wild-nsu-100' }, '*');
+frame.contentWindow.postMessage({ type: 'vpt:setGame', game: 'deuces-wild-full-pay' }, '*');
 frame.contentWindow.postMessage({ type: 'vpt:dealHand', cards: ['AS','KS','QS','JS','9D'] }, '*');
 frame.contentWindow.postMessage({ type: 'vpt:setDrawCards', cards: ['10S'] }, '*');
 frame.contentWindow.postMessage({ type: 'vpt:setHolds', holds: [0,1,2,3] }, '*');

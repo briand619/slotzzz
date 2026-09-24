@@ -230,7 +230,7 @@ and Jokers Wild — each with
 exact expected-value analysis of all 32 hold combinations on every deal
 (including wild-card hands), optimal-play grading, hints, and a ranked EV
 panel. Hands can be fed to it three ways: URL parameters
-(`index.html?game=deuces-wild-nsu-100&hand=2S,KS,QS,JS,9D&draw=10S`), a
+(`index.html?game=deuces-wild-full-pay&hand=2S,KS,QS,JS,9D&draw=10S`), a
 JavaScript API (`trainer.dealHand(['AS','KS','QS','JS','9D'])`), or
 postMessage for iframe embedding. See `frontend/video-poker/README.md` for
 the full API, and run its engine tests with

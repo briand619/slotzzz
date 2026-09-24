@@ -244,17 +244,17 @@
       ]
     },
     /*
-     * Full-pay ("Not So Ugly Ducks") Deuces Wild. Unlike the Jacks-or-Better
-     * family, the royal flush and four-deuces awards scale proportionally
-     * with bet — there is no disproportionate 5-coin jackpot jump.
+     * Full-pay Deuces Wild (25/15/9/5/3/2, 100.76% per Wizard of Odds). Like
+     * the Jacks-or-Better family, the natural royal jumps to 800 per coin
+     * (4000) at max bet.
      */
-    'deuces-wild-nsu-100': {
-      id: 'deuces-wild-nsu-100',
+    'deuces-wild-full-pay': {
+      id: 'deuces-wild-full-pay',
       name: 'DEUCES WILD',
       family: 'deuces',
       deck: 52,
       rows: [
-        { category: CATEGORY.ROYAL_FLUSH, label: 'ROYAL FLUSH', pays: [250, 500, 750, 1000, 1250] },
+        { category: CATEGORY.ROYAL_FLUSH, label: 'ROYAL FLUSH', pays: [250, 500, 750, 1000, 4000] },
         { category: CATEGORY.FOUR_DEUCES, label: '4 DEUCES', pays: [200, 400, 600, 800, 1000] },
         { category: CATEGORY.WILD_ROYAL_FLUSH, label: 'WILD ROYAL FLUSH', pays: [25, 50, 75, 100, 125] },
         { category: CATEGORY.FIVE_OF_A_KIND, label: '5 OF A KIND', pays: [15, 30, 45, 60, 75] },
@@ -273,7 +273,7 @@
       family: 'jokers',
       deck: 53,
       rows: [
-        { category: CATEGORY.ROYAL_FLUSH, label: 'ROYAL FLUSH', pays: [250, 500, 750, 1000, 1250] },
+        { category: CATEGORY.ROYAL_FLUSH, label: 'ROYAL FLUSH', pays: [250, 500, 750, 1000, 4000] },
         { category: CATEGORY.FIVE_OF_A_KIND, label: '5 OF A KIND', pays: [200, 400, 600, 800, 1000] },
         { category: CATEGORY.WILD_ROYAL_FLUSH, label: 'WILD ROYAL FLUSH', pays: [100, 200, 300, 400, 500] },
         { category: CATEGORY.STRAIGHT_FLUSH, label: 'STRAIGHT FLUSH', pays: [50, 100, 150, 200, 250] },
