@@ -237,7 +237,8 @@ the full API, and run its engine tests with
 `node frontend/video-poker/test/engine.test.js`.
 
 `frontend/video-poker/multi/` is a separate multi-line app (Triple / Five /
-Ten Play) built on the same engine and skin — see
+Ten Play) built on the same engine and skin, with optional Ultimate X and
+Dream Card features using Wizard of Odds' paytables — see
 `frontend/video-poker/multi/README.md`.
 
 ## How the Math Works
