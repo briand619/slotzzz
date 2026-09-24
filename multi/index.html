@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Multi-Play Video Poker Trainer</title>
+<meta name="theme-color" content="#0000a2">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VP Multi">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="../css/gameking.css">
+<link rel="stylesheet" href="css/multi.css">
+<style>
+  html, body {
+    margin: 0;
+    background: #06060c;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  #stage {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #game { transform-origin: center center; }
+</style>
+</head>
+<body>
+<div id="stage"><div id="game"></div></div>
+
+<script src="../js/engine.js"></script>
+<script src="js/multi.js"></script>
+<script>
+  var params = new URLSearchParams(location.search);
+
+  // Same save/restore approach as the classic app (see ../index.html), under
+  // its own key: both apps share this origin's localStorage, and each keeps
+  // its own bankroll. Only written at safe boundaries, never mid-hand, so a
+  // hand interrupted by the app being killed is dropped and its bet refunded.
+  var SAVE_KEY = 'vpm-save-v1';
+  var save = null;
+  try {
+    var raw = localStorage.getItem(SAVE_KEY);
+    save = raw ? JSON.parse(raw) : null;
+  } catch (err) { save = null; }
+
+  var savedGameValid = save && typeof save.paytable === 'string' && VPEngine.PAYTABLES[save.paytable];
+
+  var trainer = MultiPlayTrainer.create(document.getElementById('game'), {
+    credits: params.has('credits') ? Number(params.get('credits')) : (save ? save.credits : 1000),
+    bet: params.has('bet') ? Number(params.get('bet')) : (save ? save.bet : 5),
+    handCount: params.has('hands') ? Number(params.get('hands')) : (save ? save.handCount : undefined),
+    paytable: params.get('game') || (savedGameValid ? save.paytable : undefined),
+    optimalTolerance: save ? save.optimalTolerance : undefined,
+    stats: save ? save.stats : undefined
+  });
+
+  function saveState() {
+    try {
+      var s = trainer.getState();
+      if (s.phase === 'dealt') return;
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        credits: s.credits,
+        bet: s.bet,
+        handCount: s.handCount,
+        paytable: s.paytable,
+        optimalTolerance: s.settings.optimalTolerance,
+        stats: s.stats
+      }));
+    } catch (err) { /* storage full or disabled */ }
+  }
+  ['draw', 'betchange', 'handcountchange', 'gamechange', 'settingschange', 'creditschange'].forEach(function (name) {
+    trainer.on(name, saveState);
+  });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) saveState(); });
+  window.addEventListener('pagehide', saveState);
+
+  // URL API: multi/index.html?game=double-double-bonus-9-6&hands=10&hand=AS,AH,AD,3C,7H&bet=5
+  if (params.has('draw')) trainer.setDrawCards(params.get('draw'));
+  if (params.has('hand')) trainer.dealHand(params.get('hand'));
+
+  window.trainer = trainer;
+
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(function (err) {
+      console.warn('Service worker registration failed:', err);
+    });
+  }
+
+  // Scale the whole widget to fit the screen, no scrolling. Its footprint
+  // only changes when the hand count changes (hands are rebuilt then); the
+  // paytable/analysis/settings are overlays, so nothing else moves it.
+  var stage = document.getElementById('stage');
+  var vpm = trainer.element;
+  var pending = false;
+  function fitToScreen() {
+    pending = false;
+    var scale = Math.min((stage.clientWidth - 12) / vpm.offsetWidth, (stage.clientHeight - 12) / vpm.offsetHeight, 1);
+    vpm.style.transform = 'scale(' + scale + ')';
+  }
+  function scheduleFit() {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(fitToScreen);
+  }
+  trainer.on('handcountchange', scheduleFit);
+  window.addEventListener('resize', scheduleFit);
+  window.addEventListener('orientationchange', scheduleFit);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', scheduleFit);
+  fitToScreen();
+</script>
+</body>
+</html>

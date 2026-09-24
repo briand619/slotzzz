@@ -1,17 +1,22 @@
 /*
- * Service worker for the Video Poker Trainer PWA: caches the whole app shell
- * on install so it works fully offline once loaded once over http(s).
+ * Service worker for the multi-play trainer PWA (scope: this multi/ folder).
+ * Caches the app shell, including the engine and skin it shares with the
+ * classic app one level up, so it works fully offline once loaded once.
  * Bump CACHE_NAME whenever any cached file changes, to force a refresh.
  */
 'use strict';
 
-var CACHE_NAME = 'vpt-cache-v10';
+// The classic app's worker keeps vpt-cache-*; each app only ever touches
+// caches with its own prefix, since cache storage is shared by the origin.
+var CACHE_PREFIX = 'vpm-cache-';
+var CACHE_NAME = CACHE_PREFIX + 'v1';
 var APP_SHELL = [
   './',
   './index.html',
-  './css/gameking.css',
-  './js/engine.js',
-  './js/trainer.js',
+  './css/multi.css',
+  './js/multi.js',
+  '../css/gameking.css',
+  '../js/engine.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png'
@@ -29,29 +34,22 @@ self.addEventListener('activate', function (event) {
   event.waitUntil(
     caches.keys()
       .then(function (keys) {
-        // Cache storage is shared by every app on this origin (the multi-line
-        // app under multi/ keeps its own vpm-cache-*), so only clear out
-        // this app's own old versions.
         return Promise.all(keys.filter(function (k) {
-          return k.indexOf('vpt-cache-') === 0 && k !== CACHE_NAME;
-        }).map(function (k) {
-          return caches.delete(k);
-        }));
+          return k.indexOf(CACHE_PREFIX) === 0 && k !== CACHE_NAME;
+        }).map(function (k) { return caches.delete(k); }));
       })
       .then(function () { return self.clients.claim(); })
   );
 });
 
+function ownCacheMatch(req) {
+  return caches.open(CACHE_NAME).then(function (cache) { return cache.match(req); });
+}
+
 self.addEventListener('fetch', function (event) {
   var req = event.request;
   if (req.method !== 'GET') return;
 
-  // Navigations to this app's own page (index.html, possibly with
-  // ?hand=...&game=... query params) resolve to the cached app shell: the
-  // app is entirely client-side and reads query params at runtime. Only
-  // this page, though — this worker's scope is the whole site, which also
-  // hosts other pages (the multi-line app under multi/, discord.html), and
-  // answering those with this app's shell would hijack them.
   if (req.mode === 'navigate') {
     var scopePath = new URL(self.registration.scope).pathname;
     var path = new URL(req.url).pathname;
@@ -76,10 +74,3 @@ self.addEventListener('fetch', function (event) {
     }).catch(function () { return ownCacheMatch(req); })
   );
 });
-
-// Look only in this app's cache: a bare caches.match() searches every cache
-// on the origin, and the multi-line app caches its own copy of the shared
-// js/engine.js and css/gameking.css, which can be an older version.
-function ownCacheMatch(req) {
-  return caches.open(CACHE_NAME).then(function (cache) { return cache.match(req); });
-}
