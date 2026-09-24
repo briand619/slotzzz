@@ -35,6 +35,8 @@
 <div id="stage"><div id="game"></div></div>
 
 <script src="../js/engine.js"></script>
+<script src="js/tables.js"></script>
+<script src="js/features.js"></script>
 <script src="js/multi.js"></script>
 <script>
   var params = new URLSearchParams(location.search);
@@ -50,13 +52,20 @@
     save = raw ? JSON.parse(raw) : null;
   } catch (err) { save = null; }
 
-  var savedGameValid = save && typeof save.paytable === 'string' && VPEngine.PAYTABLES[save.paytable];
+  var savedGameValid = save && typeof save.paytable === 'string' && VPMFeatures.paytableById(save.paytable);
+  var urlGame = params.get('game');
+  if (urlGame && !VPMFeatures.paytableById(urlGame)) urlGame = null;
+  var restoring = !urlGame && !params.has('feature') && savedGameValid;
 
   var trainer = MultiPlayTrainer.create(document.getElementById('game'), {
     credits: params.has('credits') ? Number(params.get('credits')) : (save ? save.credits : 1000),
     bet: params.has('bet') ? Number(params.get('bet')) : (save ? save.bet : 5),
     handCount: params.has('hands') ? Number(params.get('hands')) : (save ? save.handCount : undefined),
-    paytable: params.get('game') || (savedGameValid ? save.paytable : undefined),
+    feature: params.get('feature') || undefined,
+    paytable: urlGame || (restoring ? save.paytable : undefined),
+    // Ultimate X multipliers belong to the exact game and hand count they were earned on.
+    multipliers: restoring && save.handCount === (params.has('hands') ? Number(params.get('hands')) : save.handCount)
+      ? save.multipliers : undefined,
     optimalTolerance: save ? save.optimalTolerance : undefined,
     stats: save ? save.stats : undefined
   });
@@ -70,6 +79,7 @@
         bet: s.bet,
         handCount: s.handCount,
         paytable: s.paytable,
+        multipliers: s.multipliers,
         optimalTolerance: s.settings.optimalTolerance,
         stats: s.stats
       }));
@@ -81,7 +91,7 @@
   document.addEventListener('visibilitychange', function () { if (document.hidden) saveState(); });
   window.addEventListener('pagehide', saveState);
 
-  // URL API: multi/index.html?game=double-double-bonus-9-6&hands=10&hand=AS,AH,AD,3C,7H&bet=5
+  // URL API: multi/index.html?feature=ultimate-x&game=ux-double-double-bonus-9-6&hands=10&hand=AS,AH,AD,3C,7H
   if (params.has('draw')) trainer.setDrawCards(params.get('draw'));
   if (params.has('hand')) trainer.dealHand(params.get('hand'));
 

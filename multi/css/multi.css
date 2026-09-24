@@ -6,15 +6,33 @@
 /* A fixed natural width; the page scales the whole widget to the screen. */
 .vpm { width: 1100px; max-width: none; }
 
-.vpm-title {
-  text-align: center;
+/* ---------- Setup row: feature / game / paytable / hands ---------- */
+
+.vpm-setup {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* Sized to stay tappable after the page scales the widget down on a phone. */
+.vpm-select {
+  flex: 1 1 0;
+  min-width: 0;
+  font-family: var(--gk-font);
   font-size: 22px;
   font-weight: bold;
-  letter-spacing: 2px;
-  color: var(--gk-cyan);
-  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.7);
-  margin-bottom: 8px;
+  letter-spacing: 1px;
+  color: var(--gk-yellow);
+  background: #000040;
+  border: 2px solid var(--gk-yellow-dim);
+  border-radius: 6px;
+  padding: 8px 6px;
 }
+.vpm-gameselect { flex-grow: 2; }
+.vpm-select option { background: #000040; color: var(--gk-yellow); }
+.vpm-select:disabled { opacity: 0.55; }
+
+.vpt-hidden { display: none !important; }
 
 /* ---------- Stacked mini hands ---------- */
 
@@ -54,19 +72,13 @@
   cursor: default;
 }
 
-/* ---------- Win labels ---------- */
+/* ---------- Win labels and Ultimate X multipliers ---------- */
 
-.vpm-pill {
+.vpm-pill, .vpm-mult {
   display: none;
   position: absolute;
   top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 4px 18px;
   border-radius: 8px;
-  background: rgba(0, 0, 40, 0.85);
-  border: 2px solid var(--gk-yellow);
-  color: var(--gk-yellow);
   font-size: calc(28px + 12px * var(--k));
   font-weight: bold;
   letter-spacing: 2px;
@@ -76,10 +88,41 @@
   z-index: 2;
 }
 
-.vpm-pill.vpt-open { display: block; }
+.vpm-pill {
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 4px 18px;
+  background: rgba(0, 0, 40, 0.85);
+  border: 2px solid var(--gk-yellow);
+  color: var(--gk-yellow);
+}
+
+.vpm-mult {
+  left: 0;
+  transform: translateY(-50%);
+  padding: 2px 10px;
+  background: rgba(0, 30, 50, 0.9);
+  border: 2px solid var(--gk-cyan);
+  color: var(--gk-cyan);
+}
+
+.vpm-pill.vpt-open, .vpm-mult.vpt-open { display: block; }
 
 .vpm .vpt-cards { position: relative; }
-.vpm-main-pill { --k: 1; top: calc(26px + 125px); }
+.vpm-main-pill, .vpm-main-mult { --k: 1; top: calc(26px + 125px); }
+
+/* Dream Card marker: plain text on the card, like the deuce's WILD stack — no border or background change. */
+.vpm-dreamtag {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-weight: bold;
+  font-size: 15px;
+  letter-spacing: 1.5px;
+  opacity: 0.6;
+}
 
 /* ---------- Trainer strip / status ---------- */
 
@@ -88,22 +131,6 @@
   font-size: 13px;
   padding: 6px 14px;
 }
-
-.vpm-selects { display: flex; gap: 8px; }
-.vpm .vpt-gameselect { max-width: 340px; }
-
-.vpm-countselect {
-  font-family: var(--gk-font);
-  font-size: 14px;
-  font-weight: bold;
-  letter-spacing: 1px;
-  color: var(--gk-yellow-dim);
-  background: #000040;
-  border: 1px solid var(--gk-yellow-dim);
-  border-radius: 4px;
-  padding: 3px 4px;
-}
-.vpm-countselect option { background: #000040; color: var(--gk-yellow); }
 
 /* ---------- Overlays (on <body>, outside .vpt) ---------- */
 
@@ -119,5 +146,6 @@
 .vpm-pays-modal { padding: 14px 12px 16px; }
 .vpm-pays-modal .vpt-paytable { position: relative; font-size: 13px; letter-spacing: 0; }
 .vpm-pays-modal .vpt-paytable td { padding: 1px 4px; }
+.vpm-pays-modal .vpm-pays-head td { color: var(--gk-cyan); font-size: 11px; }
 
 .vpm-analysis-modal .vpt-analysis { padding: 0; border-top: none; background: none; }

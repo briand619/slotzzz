@@ -3,59 +3,56 @@
  * trainer. Sibling of the single-line VideoPokerTrainer (../../js/trainer.js):
  * same engine, same skin, same hint/analysis/grading ideas, laid out like
  * IGT's Triple/Five/Ten Play — mini hands stacked above, the playable hand
- * full-size at the bottom.
+ * full-size at the bottom — with optional Ultimate X and Dream Card features.
  *
  * Usage:
- *   var game = MultiPlayTrainer.create(containerElement, { handCount: 5 });
+ *   var game = MultiPlayTrainer.create(containerElement, { handCount: 5, feature: 'ultimate-x' });
  *   game.dealHand(['AS', 'KS', 'QS', 'JS', '9D']);
  *   game.on('draw', function (e) { console.log(e.hands, e.won); });
  *
- * Requires ../../js/engine.js (VPEngine) to be loaded first.
+ * Requires ../../js/engine.js, then tables.js and features.js.
  */
 (function (global) {
   'use strict';
 
   var E = global.VPEngine;
-  if (!E) throw new Error('MultiPlayTrainer requires engine.js (VPEngine) to be loaded first');
+  var F = global.VPMFeatures;
+  if (!E || !F) throw new Error('MultiPlayTrainer requires engine.js, tables.js and features.js to be loaded first');
 
   var EV_EPSILON = 1e-9; // floating-point floor under the user's tolerance, as in trainer.js
   var DEFAULT_OPTIMAL_TOLERANCE = 1.0;
   var REBUY_AMOUNT = 500;
   var HAND_COUNTS = [3, 5, 10];
   var DEFAULT_HAND_COUNT = 3;
+  var DREAM_CARD_SLOT = 4; // which slot shows the Dream Card is cosmetic (see chooseDreamCard in engine.js)
 
   // Natural (unscaled) geometry, matching gameking.css's card: the page
   // scales the whole widget to fit the screen, so these only set proportions.
-  var CARD_W = 190;
   var CARD_H = 250;
   var MINI_AREA_H = 1300; // vertical budget for the stacked mini hands
   var MINI_ROW_GAP = 8;
 
-  var GAME_LIST = [
-    { key: 'jacks-or-better-9-6', label: 'Jacks or Better' },
-    { key: 'bonus-poker-8-5', label: 'Bonus Poker' },
-    { key: 'super-aces-bonus-poker', label: 'Super Aces Bonus Poker' },
-    { key: 'bonus-poker-deluxe-9-6', label: 'Bonus Poker Deluxe' },
-    { key: 'double-double-bonus-9-6', label: 'Double Double Bonus' },
-    { key: 'triple-double-bonus-9-7', label: 'Triple Double Bonus' },
-    { key: 'triple-triple-bonus', label: 'Triple Triple Bonus' },
-    { key: 'deuces-wild-nsu-100', label: 'Deuces Wild' },
-    { key: 'jokers-wild-kings-or-better', label: 'Jokers Wild' }
-  ];
-
-  var HAND_NAMES = ['', '', '', 'Triple Play', '', 'Five Play', '', '', '', '', 'Ten Play'];
-
   var nextInstanceId = 0;
-
-  function resolvePaytable(spec) {
-    var paytable = typeof spec === 'object' && spec !== null ? spec : E.PAYTABLES[spec || 'jacks-or-better-9-6'];
-    if (!paytable) throw new Error('Unknown paytable: ' + spec);
-    return paytable;
-  }
 
   function resolveHandCount(n) {
     n = Math.round(Number(n));
     return HAND_COUNTS.indexOf(n) !== -1 ? n : DEFAULT_HAND_COUNT;
+  }
+
+  /* Accepts a catalog id or a custom paytable object (played with no feature). */
+  function resolvePaytable(spec, featureKey) {
+    if (typeof spec === 'object' && spec !== null) {
+      var custom = {};
+      Object.keys(spec).forEach(function (k) { custom[k] = spec[k]; });
+      custom.feature = 'none';
+      return custom;
+    }
+    if (spec) {
+      var pt = F.paytableById(spec);
+      if (!pt) throw new Error('Unknown paytable: ' + spec);
+      return pt;
+    }
+    return F.defaultPaytable(F.feature(featureKey) ? featureKey : 'none');
   }
 
   /* Mini hands shrink only as far as needed to fit MINI_AREA_H; 3- and 5-play stay full size. */
@@ -65,21 +62,26 @@
     return Math.min(1, rowH / CARD_H);
   }
 
+  function pct(r) { return (r * 100).toFixed(2) + '%'; }
+
   function create(container, options) {
     options = options || {};
-    var paytable = resolvePaytable(options.paytable);
+    var paytable = resolvePaytable(options.paytable, options.feature);
     var instanceId = nextInstanceId++;
 
     /* ---------- state ---------- */
     var state = {
-      phase: 'attract',           // 'attract' | 'dealt'
+      phase: 'attract',           // 'attract' | 'dealing' (Dream Card being picked) | 'dealt'
       credits: options.credits != null ? options.credits : 1000,
-      bet: Math.min(5, Math.max(1, options.bet || 5)),  // coins per hand
+      bet: Math.min(5, Math.max(1, options.bet || 5)),  // coins per hand toward the paytable; features lock it at 5
       handCount: resolveHandCount(options.handCount),
       win: 0,                     // total across all hands for the last draw
       hand: null,                 // the 5 dealt cards every hand starts from
       held: [false, false, false, false, false],
-      hands: null,                // after draw: [{ cards, category, win }], index 0 = the bottom (playable) hand
+      hands: null,                // after draw: [{ cards, category, base, multiplier, win }], index 0 = the bottom (playable) hand
+      multipliers: null,          // Ultimate X: multiplier waiting on each hand position for its next deal
+      dreamCardIndex: null,
+      dreamCardJob: null,
       queuedHand: null,
       queuedDraw: null,           // forced replacements for the bottom hand only
       analysis: null,
@@ -103,24 +105,50 @@
       (listeners[name] || []).forEach(function (cb) { cb(payload); });
     }
 
-    function totalBet() { return state.bet * state.handCount; }
+    function feature() { return F.feature(paytable.feature); }
+    function isUX() { return paytable.feature === 'ultimate-x'; }
+    function isDC() { return paytable.feature === 'dream-card'; }
+    function coinsPerHand() { return state.bet * feature().costMultiplier; }
+    function totalBet() { return coinsPerHand() * state.handCount; }
+
+    function resetMultipliers(saved) {
+      state.multipliers = [];
+      for (var h = 0; h < state.handCount; h++) {
+        state.multipliers.push(isUX() && saved && saved[h] > 1 ? Math.round(saved[h]) : 1);
+      }
+    }
+    if (paytable.feature !== 'none') state.bet = 5;
+    resetMultipliers(options.multipliers);
+
+    /* Holds are ranked against this: the paytable itself, or for Ultimate X WoO's strategy values. */
+    var strategyCache = {};
+    function strategyPaytable() {
+      if (!isUX()) return paytable;
+      var key = paytable.id + ':' + state.handCount;
+      if (!strategyCache[key]) strategyCache[key] = F.uxStrategyPaytable(paytable, state.handCount);
+      return strategyCache[key];
+    }
 
     /* ---------- DOM ---------- */
     var root = document.createElement('div');
     root.className = 'vpt vpm';
     root.innerHTML =
       '<div class="vpt-screen">' +
-      '  <div class="vpm-title"></div>' +
+      '  <div class="vpm-setup">' +
+      '    <select class="vpm-select vpm-featureselect" aria-label="Feature"></select>' +
+      '    <select class="vpm-select vpm-gameselect" aria-label="Game"></select>' +
+      '    <select class="vpm-select vpm-payselect" aria-label="Paytable"></select>' +
+      '    <select class="vpm-select vpm-countselect" aria-label="Hands"></select>' +
+      '  </div>' +
       '  <div class="vpm-minis"></div>' +
       '  <div class="vpt-msgrow"><div class="vpt-message"></div></div>' +
-      '  <div class="vpt-cards"><div class="vpm-pill vpm-main-pill"></div></div>' +
+      '  <div class="vpt-cards"><div class="vpm-mult vpm-main-mult"></div><div class="vpm-pill vpm-main-pill"></div></div>' +
       '  <div class="vpt-trainer">' +
       '    <button class="vpt-btn vpt-btn-hint">HINT</button>' +
       '    <div class="vpt-verdict"></div>' +
       '    <div class="vpt-stats"></div>' +
       '  </div>' +
       '  <div class="vpt-status">' +
-      '    <span class="vpm-selects"><select class="vpt-gameselect"></select><select class="vpm-countselect"></select></span>' +
       '    <span class="vpt-bet"></span>' +
       '    <span class="vpt-win"></span>' +
       '    <span class="vpt-credit"></span>' +
@@ -165,23 +193,25 @@
 
     var paysModal = makeModal('vpm-pays-modal',
       '<h3 class="vpm-pays-title"></h3>' +
-      '<table class="vpt-paytable"><colgroup><col><col><col><col><col><col></colgroup><tbody></tbody></table>' +
-      '<p class="vpt-settings-hint">Coins paid per hand at each bet level; the red column is your current bet per hand.</p>');
+      '<table class="vpt-paytable"><colgroup></colgroup><tbody></tbody></table>' +
+      '<p class="vpt-settings-hint vpm-pays-note"></p>');
 
     var analysisModal = makeModal('vpm-analysis-modal',
-      '<div class="vpt-analysis vpt-open"><h3>HOLD ANALYSIS (EV PER HAND, IN COINS)</h3><table>' +
-      '<thead><tr><th>#</th><th>HOLD</th><th style="text-align:right">EV</th></tr></thead>' +
-      '<tbody></tbody></table></div>');
+      '<div class="vpt-analysis vpt-open"><h3 class="vpm-analysis-title"></h3><table>' +
+      '<thead><tr><th>#</th><th>HOLD</th><th class="vpm-analysis-col" style="text-align:right">EV</th></tr></thead>' +
+      '<tbody></tbody></table><p class="vpt-settings-hint vpm-analysis-note"></p></div>');
 
     var el = {
-      title: root.querySelector('.vpm-title'),
       minis: root.querySelector('.vpm-minis'),
       message: root.querySelector('.vpt-message'),
       cards: root.querySelector('.vpt-cards'),
       mainPill: root.querySelector('.vpm-main-pill'),
+      mainMult: root.querySelector('.vpm-main-mult'),
       verdict: root.querySelector('.vpt-verdict'),
       stats: root.querySelector('.vpt-stats'),
-      gameSelect: root.querySelector('.vpt-gameselect'),
+      featureSelect: root.querySelector('.vpm-featureselect'),
+      gameSelect: root.querySelector('.vpm-gameselect'),
+      paySelect: root.querySelector('.vpm-payselect'),
       countSelect: root.querySelector('.vpm-countselect'),
       bet: root.querySelector('.vpt-bet'),
       win: root.querySelector('.vpt-win'),
@@ -198,46 +228,18 @@
       toleranceInput: settingsModal.querySelector('.vpt-tol-input'),
       paysModal: paysModal,
       paysTitle: paysModal.querySelector('.vpm-pays-title'),
+      paysCols: paysModal.querySelector('colgroup'),
       paysBody: paysModal.querySelector('tbody'),
-      paysCols: paysModal.querySelectorAll('col'),
+      paysNote: paysModal.querySelector('.vpm-pays-note'),
       analysisModal: analysisModal,
+      analysisTitle: analysisModal.querySelector('.vpm-analysis-title'),
+      analysisCol: analysisModal.querySelector('.vpm-analysis-col'),
       analysisBody: analysisModal.querySelector('tbody'),
+      analysisNote: analysisModal.querySelector('.vpm-analysis-note'),
       slots: [],
-      miniRows: []                // miniRows[r] = { row, pill, cards: [5 .vpt-card] }, r = 0 is hand 2 (nearest the bottom hand)
+      miniRows: []                // miniRows[r] = { row, pill, mult, cards }, r = 0 is hand 2 (nearest the bottom hand)
     };
     el.toleranceInput.value = state.settings.optimalTolerance;
-
-    GAME_LIST.forEach(function (g) {
-      var opt = document.createElement('option');
-      opt.value = g.key;
-      opt.textContent = g.label.toUpperCase();
-      el.gameSelect.appendChild(opt);
-    });
-    function syncGameSelect() {
-      var known = paytable.id && GAME_LIST.some(function (g) { return g.key === paytable.id; });
-      var custom = el.gameSelect.querySelector('option[value="__custom__"]');
-      if (known) {
-        if (custom) custom.remove();
-        el.gameSelect.value = paytable.id;
-      } else {
-        if (!custom) {
-          custom = document.createElement('option');
-          custom.value = '__custom__';
-          el.gameSelect.appendChild(custom);
-        }
-        custom.textContent = paytable.name;
-        el.gameSelect.value = '__custom__';
-      }
-    }
-    syncGameSelect();
-
-    HAND_COUNTS.forEach(function (n) {
-      var opt = document.createElement('option');
-      opt.value = n;
-      opt.textContent = n + ' HANDS';
-      el.countSelect.appendChild(opt);
-    });
-    el.countSelect.value = state.handCount;
 
     for (var i = 0; i < 5; i++) {
       var slot = document.createElement('div');
@@ -246,23 +248,59 @@
       (function (idx) {
         slot.addEventListener('click', function () { api.toggleHold(idx); });
       })(i);
-      el.cards.insertBefore(slot, el.mainPill);
+      el.cards.insertBefore(slot, el.mainMult);
       el.slots.push(slot);
+    }
+
+    /* ---------- setup selectors ---------- */
+
+    function fillSelect(select, options, value) {
+      select.innerHTML = '';
+      options.forEach(function (o) {
+        var opt = document.createElement('option');
+        opt.value = o.value;
+        opt.textContent = o.label;
+        select.appendChild(opt);
+      });
+      select.value = value;
+    }
+
+    function variantLabel(pt) {
+      var label = pt.variant || 'STANDARD';
+      if (pt.returns) label += ' · ' + pct(pt.returns[state.handCount]);
+      else if (pt.dreamCardReturn) label += ' · ' + pct(pt.dreamCardReturn);
+      return label;
+    }
+
+    function renderSetup() {
+      fillSelect(el.featureSelect, F.FEATURES.map(function (f) { return { value: f.key, label: f.label }; }), paytable.feature);
+      if (paytable.id && F.paytableById(paytable.id)) {
+        var games = F.games(paytable.feature);
+        fillSelect(el.gameSelect, games.map(function (g) { return { value: g.game, label: g.game }; }), paytable.game);
+        var group = games.filter(function (g) { return g.game === paytable.game; })[0];
+        fillSelect(el.paySelect, group.paytables.map(function (pt) { return { value: pt.id, label: variantLabel(pt) }; }), paytable.id);
+        el.paySelect.classList.toggle('vpt-hidden', group.paytables.length === 1 && !group.paytables[0].variant);
+      } else {
+        fillSelect(el.gameSelect, [{ value: '__custom__', label: paytable.name || 'CUSTOM' }], '__custom__');
+        el.paySelect.classList.add('vpt-hidden');
+      }
+      fillSelect(el.countSelect, HAND_COUNTS.map(function (n) { return { value: n, label: n + ' HANDS' }; }), state.handCount);
     }
 
     /* ---------- rendering ---------- */
 
-    function renderCard(cardEl, card) {
+    function renderCard(cardEl, card, isDreamCard) {
       if (card == null) {
         cardEl.className = 'vpt-card vpt-back';
         cardEl.innerHTML = '';
         return;
       }
+      var dreamTag = isDreamCard ? '<div class="vpm-dreamtag">DREAM CARD</div>' : '';
       if (E.isJoker(card)) {
         cardEl.className = 'vpt-card vpt-joker';
         cardEl.innerHTML =
           '<div class="vpt-corner">JKR</div>' +
-          '<div class="vpt-joker-face"><div class="vpt-joker-label">JOKER</div></div>';
+          '<div class="vpt-joker-face"><div class="vpt-joker-label">JOKER</div></div>' + dreamTag;
         return;
       }
       var suit = E.suitOf(card);
@@ -279,15 +317,14 @@
         ? '<div class="vpt-wildstack"><span>WILD</span><span>WILD</span><span>WILD</span><span>WILD</span></div>'
         : '';
       cardEl.innerHTML =
-        '<div class="vpt-corner">' + rankChar + '<span>' + glyph + '</span></div>' + wildStack + center;
+        '<div class="vpt-corner">' + rankChar + '<span>' + glyph + '</span></div>' + wildStack + center + dreamTag;
     }
 
     /* Rebuilt only when the hand count changes — the widget's footprint changes only then. */
     function buildMiniRows() {
       var rows = state.handCount - 1;
-      var k = miniScale(state.handCount);
       el.minis.innerHTML = '';
-      el.minis.style.setProperty('--k', k);
+      el.minis.style.setProperty('--k', miniScale(state.handCount));
       el.minis.style.gap = MINI_ROW_GAP + 'px';
       el.miniRows = [];
       for (var r = 0; r < rows; r++) {
@@ -301,20 +338,23 @@
           row.appendChild(col);
           cards.push(col.querySelector('.vpt-card'));
         }
+        var mult = document.createElement('div');
+        mult.className = 'vpm-mult';
+        row.appendChild(mult);
         var pill = document.createElement('div');
         pill.className = 'vpm-pill';
         row.appendChild(pill);
         // Visual order top-to-bottom is hand N .. hand 2, so hand 2 sits
         // right above the playable hand.
         el.minis.insertBefore(row, el.minis.firstChild);
-        el.miniRows.push({ row: row, pill: pill, cards: cards });
+        el.miniRows.push({ row: row, pill: pill, mult: mult, cards: cards });
       }
-      el.title.textContent = paytable.name + ' · ' + HAND_NAMES[state.handCount].toUpperCase();
     }
 
     function setPill(pill, hand) {
       if (hand && hand.win > 0) {
-        pill.textContent = E.CATEGORY_NAMES[hand.category] + '  ' + hand.win;
+        pill.textContent = E.CATEGORY_NAMES[hand.category] +
+          (hand.multiplier > 1 ? '  ×' + hand.multiplier + ' = ' : '  ') + hand.win;
         pill.classList.add('vpt-open');
       } else {
         pill.textContent = '';
@@ -322,16 +362,29 @@
       }
     }
 
+    /* Ultimate X: the multiplier waiting on this hand position (only shown when above 1X). */
+    function setMult(badge, h) {
+      var m = isUX() ? state.multipliers[h] : 1;
+      badge.textContent = m > 1 ? m + 'X' : '';
+      badge.classList.toggle('vpt-open', m > 1);
+    }
+
+    function isDreamSlot(i) {
+      if (state.dreamCardIndex !== i || !state.hand) return false;
+      return state.phase !== 'attract' || state.held[i];
+    }
+
     function renderMainHand() {
       var cards = state.hands ? state.hands[0].cards : state.hand;
       for (var i = 0; i < 5; i++) {
         var slot = el.slots[i];
-        renderCard(slot.querySelector('.vpt-card'), cards ? cards[i] : null);
+        renderCard(slot.querySelector('.vpt-card'), cards ? cards[i] : null, isDreamSlot(i));
         slot.classList.toggle('vpt-held', state.held[i]);
         slot.classList.toggle('vpt-disabled', state.phase !== 'dealt');
         slot.classList.remove('vpt-hint', 'vpt-best');
       }
       setPill(el.mainPill, state.hands ? state.hands[0] : null);
+      setMult(el.mainMult, 0);
     }
 
     /*
@@ -347,9 +400,10 @@
           var card = null;
           if (hand) card = hand.cards[c];
           else if (state.hand && state.held[c]) card = state.hand[c];
-          renderCard(mini.cards[c], card);
+          renderCard(mini.cards[c], card, false);
         }
         setPill(mini.pill, hand);
+        setMult(mini.mult, r + 1);
       });
     }
 
@@ -362,9 +416,6 @@
       el.bet.textContent = 'BET ' + totalBet();
       el.win.textContent = 'WIN ' + state.win;
       el.credit.textContent = 'CREDIT ' + state.credits;
-      el.paysCols.forEach(function (col, idx) {
-        col.className = idx === state.bet ? 'vpt-bet-active-col' : '';
-      });
     }
 
     function renderStats() {
@@ -375,25 +426,66 @@
 
     function renderButtons() {
       var dealt = state.phase === 'dealt';
+      var locked = state.phase !== 'attract';
+      var fixedBet = paytable.feature !== 'none';
       el.deal.textContent = dealt ? 'Draw' : 'Deal';
-      el.deal.disabled = !dealt && state.credits < totalBet() && !state.queuedHand;
-      el.betOne.disabled = dealt;
-      el.betMax.disabled = dealt || (state.credits < 5 * state.handCount && !state.queuedHand);
+      el.deal.disabled = locked ? !dealt : state.credits < totalBet() && !state.queuedHand;
+      el.betOne.disabled = locked || fixedBet;
+      el.betMax.disabled = locked || (state.credits < 5 * feature().costMultiplier * state.handCount && !state.queuedHand);
       el.hint.disabled = !dealt;
-      el.gameSelect.disabled = dealt;
-      el.countSelect.disabled = dealt;
+      el.featureSelect.disabled = locked;
+      el.gameSelect.disabled = locked;
+      el.paySelect.disabled = locked;
+      el.countSelect.disabled = locked;
     }
 
     function renderPaytable() {
-      el.paysTitle.textContent = paytable.name;
-      el.paysBody.innerHTML = '';
+      el.paysTitle.textContent = (paytable.feature === 'none' ? '' : feature().label + ' · ') +
+        (paytable.game || paytable.name) + (paytable.variant ? ' ' + paytable.variant : '');
+      var body = el.paysBody;
+      body.innerHTML = '';
+      var cols;
+      if (isUX()) {
+        cols = '<col><col><col>';
+        body.innerHTML = '<tr class="vpm-pays-head"><td></td><td>5 COINS</td><td>' + state.handCount + '-PLAY MULT</td></tr>';
+      } else if (isDC()) {
+        cols = '<col><col class="vpt-bet-active-col">';
+        body.innerHTML = '<tr class="vpm-pays-head"><td></td><td>5 COINS</td></tr>';
+      } else {
+        cols = '<col><col><col><col><col><col>';
+      }
+      el.paysCols.innerHTML = cols;
       paytable.rows.forEach(function (row) {
         var tr = document.createElement('tr');
         var cells = ['<td>' + row.label + '</td>'];
-        row.pays.forEach(function (p) { cells.push('<td>' + p + '</td>'); });
+        if (isUX()) {
+          cells.push('<td>' + row.pays[4] + '</td>', '<td>' + F.uxMultiplier(paytable, row.category, state.handCount) + 'X</td>');
+        } else if (isDC()) {
+          cells.push('<td>' + row.pays[4] + '</td>');
+        } else {
+          row.pays.forEach(function (p) { cells.push('<td>' + p + '</td>'); });
+        }
         tr.innerHTML = cells.join('');
-        el.paysBody.appendChild(tr);
+        body.appendChild(tr);
       });
+      if (!isUX() && !isDC()) {
+        el.paysCols.querySelectorAll('col').forEach(function (col, idx) {
+          col.className = idx === state.bet ? 'vpt-bet-active-col' : '';
+        });
+      }
+      var note;
+      if (isUX()) {
+        note = 'Ultimate X: 10 coins per hand. Each winning hand pays now and earns its multiplier for that ' +
+          'same hand position on the next deal. Return ' + pct(paytable.returns[state.handCount]) +
+          ' at ' + state.handCount + '-play (Wizard of Odds).';
+      } else if (isDC()) {
+        note = 'Dream Card: 10 coins per hand, wins paid on 5. About ' + Math.round(F.dreamCardProbability(paytable) * 1000) / 10 +
+          '% of deals get four cards plus the best possible fifth. Return ' + pct(paytable.dreamCardReturn) +
+          ' (' + pct(paytable.baseReturn) + ' without it), per Wizard of Odds.';
+      } else {
+        note = 'Coins paid per hand at each bet level; the red column is your current bet per hand.';
+      }
+      el.paysNote.textContent = note;
     }
 
     function holdLabel(item) {
@@ -402,6 +494,14 @@
     }
 
     function renderAnalysis(yourMask) {
+      el.analysisTitle.textContent = isUX()
+        ? 'HOLD ANALYSIS (ULTIMATE X STRATEGY VALUE, PER HAND)'
+        : 'HOLD ANALYSIS (EV PER HAND, IN COINS)';
+      el.analysisCol.textContent = isUX() ? 'VALUE' : 'EV';
+      el.analysisNote.textContent = isUX()
+        ? 'Wizard of Odds’ Ultimate X method: each result counts as 2 × its 5-coin pay + 5 × (multiplier it earns − 1). ' +
+          'One strategy per game that he reports as near-optimal; the multipliers already in play don’t change it.'
+        : '';
       var body = el.analysisBody;
       body.innerHTML = '';
       if (!state.analysis) {
@@ -433,7 +533,7 @@
     function startAnalysis() {
       if (state.analysisJob) state.analysisJob.cancel();
       state.analysis = null;
-      var job = E.analyzeHoldsAsync(state.hand, state.bet, paytable);
+      var job = E.analyzeHoldsAsync(state.hand, state.bet, strategyPaytable());
       state.analysisJob = job;
       job.promise.then(function (results) {
         if (state.analysisJob !== job) return;
@@ -447,7 +547,7 @@
     function finishAnalysisSync() {
       if (!state.analysis) {
         if (state.analysisJob) { state.analysisJob.cancel(); state.analysisJob = null; }
-        state.analysis = E.analyzeHolds(state.hand, state.bet, paytable);
+        state.analysis = E.analyzeHolds(state.hand, state.bet, strategyPaytable());
       }
     }
 
@@ -459,26 +559,12 @@
 
     /* ---------- game actions ---------- */
 
-    function deal(forcedHand) {
-      if (state.phase === 'dealt') return;
-      var forced = forcedHand || state.queuedHand;
-      if (!forced && state.credits < totalBet()) {
-        setMessage('INSERT CREDITS', 'info');
-        return;
-      }
-      state.credits -= totalBet();
-      state.win = 0;
-      state.hands = null;
-      state.hand = forced ? forced.slice()
-        : E.shuffledDeck([], undefined, paytable.deck === 53).slice(0, 5);
-      state.queuedHand = null;
-      state.held = [false, false, false, false, false];
+    function finishDeal(hand) {
+      state.hand = hand;
       state.phase = 'dealt';
-      state.hintUsed = false;
-      state.lastVerdict = null;
-
       var dealtCat = E.resolveCategory(state.hand, paytable);
-      setMessage(dealtCat !== E.CATEGORY.NOTHING ? E.CATEGORY_NAMES[dealtCat] : '', 'info');
+      if (state.dreamCardIndex != null) setMessage('DREAM CARD!', 'info');
+      else setMessage(dealtCat !== E.CATEGORY.NOTHING ? E.CATEGORY_NAMES[dealtCat] : '', 'info');
       el.verdict.textContent = 'HOLD CARDS · THEN PRESS DRAW';
       el.verdict.className = 'vpt-verdict vpt-neutral';
 
@@ -488,14 +574,69 @@
       renderStatus();
       renderButtons();
       if (el.analysisModal.classList.contains('vpt-open')) renderAnalysis(null);
-      emit('deal', { hand: state.hand.map(E.cardToString), bet: state.bet, handCount: state.handCount });
+      emit('deal', {
+        hand: state.hand.map(E.cardToString),
+        bet: state.bet,
+        handCount: state.handCount,
+        feature: paytable.feature,
+        dreamCardIndex: state.dreamCardIndex,
+        multipliers: state.multipliers.slice()
+      });
+    }
+
+    function deal(forcedHand) {
+      // 'dealing' blocks re-entry too: this deal's bet is already charged.
+      if (state.phase !== 'attract') return;
+      var forced = forcedHand || state.queuedHand;
+      if (!forced && state.credits < totalBet()) {
+        setMessage('INSERT CREDITS', 'info');
+        return;
+      }
+      state.credits -= totalBet();
+      state.win = 0;
+      state.hands = null;
+      state.queuedHand = null;
+      state.held = [false, false, false, false, false];
+      state.hintUsed = false;
+      state.lastVerdict = null;
+      state.dreamCardIndex = null;
+      state.analysis = null;
+      var includeJoker = paytable.deck === 53;
+
+      if (forced) { finishDeal(forced.slice()); return; }
+
+      if (isDC() && Math.random() < F.dreamCardProbability(paytable)) {
+        // Four random cards, then the fifth that maximizes the hand's best-hold
+        // EV, found exactly (a background search, well under a second).
+        var four = E.shuffledDeck([], undefined, includeJoker).slice(0, 4);
+        state.phase = 'dealing';
+        state.hand = four.concat([null]);
+        state.dreamCardIndex = DREAM_CARD_SLOT;
+        setMessage('DREAM CARD…', 'info');
+        el.verdict.textContent = '';
+        renderMainHand();
+        renderMiniHands();
+        renderStatus();
+        renderButtons();
+        var job = E.chooseDreamCardAsync(four, state.bet, paytable);
+        state.dreamCardJob = job;
+        job.promise.then(function (result) {
+          if (state.dreamCardJob !== job) return;
+          state.dreamCardJob = null;
+          finishDeal(four.concat([result.card]));
+        }, function () { /* cancelled */ });
+        return;
+      }
+
+      finishDeal(E.shuffledDeck([], undefined, includeJoker).slice(0, 5));
     }
 
     /*
      * Every hand keeps the held cards and replaces the rest from its own
-     * independently shuffled copy of the 47 unseen cards — the real
-     * multi-play mechanic, so the same replacement card can land in more
-     * than one hand.
+     * independently shuffled copy of the unseen cards — the real multi-play
+     * mechanic, so the same replacement card can land in more than one hand.
+     * Wins pay on the 5-coin (or chosen-bet) paytable, times the hand's
+     * Ultimate X multiplier; each win then earns that position's next one.
      */
     function drawHands() {
       var includeJoker = paytable.deck === 53;
@@ -510,7 +651,14 @@
         var next = 0;
         for (var i = 0; i < 5; i++) if (!state.held[i]) cards[i] = deck[next++];
         var category = E.resolveCategory(cards, paytable);
-        hands.push({ cards: cards, category: category, win: E.payout(category, state.bet, paytable) });
+        var base = E.payout(category, state.bet, paytable);
+        var multiplier = state.multipliers[h];
+        hands.push({ cards: cards, category: category, base: base, multiplier: multiplier, win: base * multiplier });
+      }
+      if (isUX()) {
+        state.multipliers = hands.map(function (hand) {
+          return hand.base > 0 ? F.uxMultiplier(paytable, hand.category, state.handCount) : 1;
+        });
       }
       state.queuedDraw = null;
       return hands;
@@ -549,14 +697,15 @@
 
       renderMainHand();
       renderMiniHands();
+      var unit = isUX() ? 'VALUE ' : 'EV ';
       if (wasOptimal) {
         el.verdict.textContent = wasExact
-          ? '✓ OPTIMAL HOLD · EV ' + best.ev.toFixed(3)
-          : '✓ OPTIMAL HOLD · EV ' + playerItem.ev.toFixed(3) + ' (BEST ' + best.ev.toFixed(3) + ')';
+          ? '✓ OPTIMAL HOLD · ' + unit + best.ev.toFixed(3)
+          : '✓ OPTIMAL HOLD · ' + unit + playerItem.ev.toFixed(3) + ' (BEST ' + best.ev.toFixed(3) + ')';
         el.verdict.className = 'vpt-verdict vpt-good';
       } else {
         el.verdict.textContent = '✗ BEST: ' + holdLabel(best) +
-          ' · EV ' + best.ev.toFixed(3) + ' VS YOURS ' + playerItem.ev.toFixed(3);
+          ' · ' + unit + best.ev.toFixed(3) + ' VS YOURS ' + playerItem.ev.toFixed(3);
         el.verdict.className = 'vpt-verdict vpt-bad';
         best.heldIndices.forEach(function (idx) { el.slots[idx].classList.add('vpt-best'); });
       }
@@ -571,11 +720,14 @@
             cards: h.cards.map(E.cardToString),
             category: h.category,
             categoryName: E.CATEGORY_NAMES[h.category],
+            base: h.base,
+            multiplier: h.multiplier,
             won: h.win
           };
         }),
         won: won,
         credits: state.credits,
+        nextMultipliers: state.multipliers.slice(),
         playerHold: playerItem.heldIndices,
         optimalHold: best.heldIndices,
         wasOptimal: wasOptimal,
@@ -600,8 +752,10 @@
       el.verdict.className = 'vpt-verdict vpt-neutral';
     }
 
+    /* A new game, feature or hand count: like walking up to a different machine, so multipliers don't carry over. */
     function resetTable() {
       if (state.analysisJob) { state.analysisJob.cancel(); state.analysisJob = null; }
+      if (state.dreamCardJob) { state.dreamCardJob.cancel(); state.dreamCardJob = null; }
       state.phase = 'attract';
       state.hand = null;
       state.hands = null;
@@ -611,9 +765,21 @@
       state.analysis = null;
       state.win = 0;
       state.lastVerdict = null;
-      setMessage('PLAY 1 TO 5 CREDITS PER HAND', 'info');
+      state.dreamCardIndex = null;
+      resetMultipliers(null);
+      setMessage(paytable.feature === 'none' ? 'PLAY 1 TO 5 CREDITS PER HAND' : feature().label + ' · 10 CREDITS PER HAND', 'info');
       el.verdict.textContent = '';
       el.verdict.className = 'vpt-verdict';
+    }
+
+    function repaint() {
+      renderSetup();
+      renderPaytable();
+      renderMainHand();
+      renderMiniHands();
+      renderStatus();
+      renderStats();
+      renderButtons();
     }
 
     /* ---------- public API ---------- */
@@ -622,6 +788,7 @@
       dealHand: function (cards) {
         var hand = E.parseHand(cards);
         if (hand.length !== 5) throw new Error('dealHand needs exactly 5 cards');
+        if (state.dreamCardJob) { state.dreamCardJob.cancel(); state.dreamCardJob = null; }
         state.phase = 'attract';
         deal(hand);
         return api;
@@ -657,28 +824,41 @@
         emit('holdchange', { held: state.held.slice() });
         return api;
       },
-      /* Coins per hand, 1..5; the total wager is this times the hand count. */
+      /* Coins per hand toward the paytable, 1..5 (features always play 5, plus the 5-coin fee). */
       setBet: function (n) {
-        if (state.phase === 'dealt') return api;
+        if (state.phase !== 'attract' || paytable.feature !== 'none') return api;
         state.bet = Math.min(5, Math.max(1, Math.round(n)));
+        renderPaytable();
         renderStatus();
         renderButtons();
         emit('betchange', { bet: state.bet });
         return api;
       },
       setHandCount: function (n) {
-        if (state.phase === 'dealt') return api;
+        if (state.phase !== 'attract') return api;
         var count = resolveHandCount(n);
         if (count === state.handCount) return api;
         state.handCount = count;
-        el.countSelect.value = count;
-        state.hands = null;
+        resetTable();
         buildMiniRows();
-        renderMainHand();
-        renderMiniHands();
-        renderStatus();
-        renderButtons();
+        repaint();
         emit('handcountchange', { handCount: count });
+        return api;
+      },
+      /* 'none', 'ultimate-x' or 'dream-card'; switches to that feature's first game. */
+      setFeature: function (key) {
+        if (state.phase !== 'attract' || !F.feature(key) || key === paytable.feature) return api;
+        return api.setGame(F.defaultPaytable(key).id);
+      },
+      /* Switch paytables (a catalog id, or a custom paytable object with no feature). Credits carry over; the table and stats reset. */
+      setGame: function (spec) {
+        if (state.phase !== 'attract') return api;
+        paytable = resolvePaytable(spec);
+        if (paytable.feature !== 'none') state.bet = 5;
+        resetTable();
+        state.stats = { hands: 0, optimal: 0, evLost: 0 };
+        repaint();
+        emit('gamechange', { paytable: paytable.id || paytable.name, feature: paytable.feature });
         return api;
       },
       addCredits: function (n) {
@@ -696,25 +876,9 @@
         emit('settingschange', { optimalTolerance: v });
         return api;
       },
-      /* Switch games; credits carry over, the table and stats reset. */
-      setGame: function (spec) {
-        paytable = resolvePaytable(spec);
-        resetTable();
-        state.stats = { hands: 0, optimal: 0, evLost: 0 };
-        syncGameSelect();
-        el.title.textContent = paytable.name + ' · ' + HAND_NAMES[state.handCount].toUpperCase();
-        renderPaytable();
-        renderMainHand();
-        renderMiniHands();
-        renderStatus();
-        renderStats();
-        renderButtons();
-        emit('gamechange', { paytable: paytable.id || paytable.name });
-        return api;
-      },
       hint: function () { showHint(); return api; },
       analyze: function () {
-        if (!state.hand) return null;
+        if (!state.hand || state.phase === 'dealing') return null;
         finishAnalysisSync();
         return state.analysis.map(function (r) {
           return { hold: r.heldIndices.slice(), cards: r.heldCards.map(E.cardToString), ev: r.ev };
@@ -723,13 +887,16 @@
       getState: function () {
         return {
           phase: state.phase,
+          feature: paytable.feature,
           paytable: paytable.id || paytable.name,
           handCount: state.handCount,
-          hand: state.hand ? state.hand.map(E.cardToString) : null,
+          hand: state.hand && state.phase !== 'dealing' ? state.hand.map(E.cardToString) : null,
           held: state.held.slice(),
           hands: state.hands ? state.hands.map(function (h) {
-            return { cards: h.cards.map(E.cardToString), category: h.category, win: h.win };
+            return { cards: h.cards.map(E.cardToString), category: h.category, base: h.base, multiplier: h.multiplier, win: h.win };
           }) : null,
+          multipliers: state.multipliers.slice(),
+          dreamCardIndex: state.dreamCardIndex,
           bet: state.bet,
           totalBet: totalBet(),
           credits: state.credits,
@@ -755,7 +922,7 @@
     el.deal.addEventListener('click', function () { if (state.phase === 'dealt') draw(); else deal(); });
     el.betOne.addEventListener('click', function () { api.setBet(state.bet >= 5 ? 1 : state.bet + 1); });
     el.betMax.addEventListener('click', function () {
-      if (state.phase === 'dealt') return;
+      if (state.phase !== 'attract') return;
       api.setBet(5);
       deal();
     });
@@ -766,15 +933,21 @@
       el.settingsModal.classList.add('vpt-open');
     });
     el.toleranceInput.addEventListener('change', function () { api.setOptimalTolerance(el.toleranceInput.value); });
-    el.paysBtn.addEventListener('click', function () { el.paysModal.classList.add('vpt-open'); });
+    el.paysBtn.addEventListener('click', function () {
+      renderPaytable();
+      el.paysModal.classList.add('vpt-open');
+    });
     el.analysisBtn.addEventListener('click', function () {
       if (state.hand && state.phase === 'dealt') finishAnalysisSync();
       renderAnalysis(state.phase === 'attract' && state.lastVerdict ? playerMask() : null);
       el.analysisModal.classList.add('vpt-open');
     });
+    el.featureSelect.addEventListener('change', function () { api.setFeature(el.featureSelect.value); });
     el.gameSelect.addEventListener('change', function () {
-      if (el.gameSelect.value !== '__custom__') api.setGame(el.gameSelect.value);
+      var group = F.games(paytable.feature).filter(function (g) { return g.game === el.gameSelect.value; })[0];
+      if (group) api.setGame(group.paytables[0].id);
     });
+    el.paySelect.addEventListener('change', function () { api.setGame(el.paySelect.value); });
     el.countSelect.addEventListener('change', function () { api.setHandCount(el.countSelect.value); });
     document.addEventListener('keydown', function (ev) {
       if (ev.key !== 'Escape') return;
@@ -838,14 +1011,11 @@
     }
 
     /* ---------- initial paint ---------- */
+    var restoredMultipliers = state.multipliers.slice();
     resetTable();
+    state.multipliers = restoredMultipliers; // a saved Ultimate X session keeps what its hands had earned
     buildMiniRows();
-    renderPaytable();
-    renderMainHand();
-    renderMiniHands();
-    renderStatus();
-    renderStats();
-    renderButtons();
+    repaint();
 
     return api;
   }
@@ -853,7 +1023,7 @@
   global.MultiPlayTrainer = {
     create: create,
     Engine: E,
-    HAND_COUNTS: HAND_COUNTS.slice(),
-    GAMES: GAME_LIST.map(function (g) { return g.key; })
+    Features: F,
+    HAND_COUNTS: HAND_COUNTS.slice()
   };
 })(typeof self !== 'undefined' ? self : this);

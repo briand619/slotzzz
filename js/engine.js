@@ -81,7 +81,8 @@
    *                is split into pay tiers: 'flat' (one rate for any quad),
    *                'rank-tier' (Aces / 2s-4s / 5s-Ks), or 'kicker-tier'
    *                (also splits each of Aces and 2s-4s by whether the 5th
-   *                card is a bonus-eligible kicker).
+   *                card is a bonus-eligible kicker). `minPair: 'kings'`
+   *                raises the lowest paying pair from jacks to kings.
    *   'deuces'   - 52-card deck, the four 2s are wild.
    *   'jokers'   - 53-card deck (one Joker added), the Joker is wild.
    */
@@ -244,17 +245,17 @@
       ]
     },
     /*
-     * Full-pay ("Not So Ugly Ducks") Deuces Wild. Unlike the Jacks-or-Better
-     * family, the royal flush and four-deuces awards scale proportionally
-     * with bet — there is no disproportionate 5-coin jackpot jump.
+     * Full-pay Deuces Wild (25/15/9/5/3/2, 100.76% per Wizard of Odds). Like
+     * the Jacks-or-Better family, the natural royal jumps to 800 per coin
+     * (4000) at max bet.
      */
-    'deuces-wild-nsu-100': {
-      id: 'deuces-wild-nsu-100',
+    'deuces-wild-full-pay': {
+      id: 'deuces-wild-full-pay',
       name: 'DEUCES WILD',
       family: 'deuces',
       deck: 52,
       rows: [
-        { category: CATEGORY.ROYAL_FLUSH, label: 'ROYAL FLUSH', pays: [250, 500, 750, 1000, 1250] },
+        { category: CATEGORY.ROYAL_FLUSH, label: 'ROYAL FLUSH', pays: [250, 500, 750, 1000, 4000] },
         { category: CATEGORY.FOUR_DEUCES, label: '4 DEUCES', pays: [200, 400, 600, 800, 1000] },
         { category: CATEGORY.WILD_ROYAL_FLUSH, label: 'WILD ROYAL FLUSH', pays: [25, 50, 75, 100, 125] },
         { category: CATEGORY.FIVE_OF_A_KIND, label: '5 OF A KIND', pays: [15, 30, 45, 60, 75] },
@@ -273,7 +274,7 @@
       family: 'jokers',
       deck: 53,
       rows: [
-        { category: CATEGORY.ROYAL_FLUSH, label: 'ROYAL FLUSH', pays: [250, 500, 750, 1000, 1250] },
+        { category: CATEGORY.ROYAL_FLUSH, label: 'ROYAL FLUSH', pays: [250, 500, 750, 1000, 4000] },
         { category: CATEGORY.FIVE_OF_A_KIND, label: '5 OF A KIND', pays: [200, 400, 600, 800, 1000] },
         { category: CATEGORY.WILD_ROYAL_FLUSH, label: 'WILD ROYAL FLUSH', pays: [100, 200, 300, 400, 500] },
         { category: CATEGORY.STRAIGHT_FLUSH, label: 'STRAIGHT FLUSH', pays: [50, 100, 150, 200, 250] },
@@ -442,6 +443,10 @@
 
   function resolveStandardCategory(hand, paytable) {
     var d = classifyDetailed(hand);
+    if (d.category === CATEGORY.JACKS_OR_BETTER && paytable.minPair === 'kings') {
+      /* e.g. Triple Bonus Poker: jacks and queens don't pay. */
+      return d.pairRank >= KING_RANK ? CATEGORY.KINGS_OR_BETTER : CATEGORY.NOTHING;
+    }
     if (d.category !== CATEGORY.FOUR_OF_A_KIND) return d.category;
     var rule = paytable.quadRule || 'flat';
     if (rule === 'flat') return CATEGORY.FOUR_OF_A_KIND;
@@ -752,6 +757,110 @@
     return { promise: promise, cancel: function () { cancelled = true; } };
   }
 
+  /*
+   * Dream Card: given 4 already-dealt cards (hand positions 0-3), finds the
+   * 5th card — from the remaining deck — that maximizes the resulting
+   * hand's best-hold EV, exactly. The Dream Card itself always ends up at
+   * position 4; which physical slot displays it is cosmetic and doesn't
+   * affect this math.
+   *
+   * A naive brute force would run a full analyzeHolds (32 holds) once per
+   * candidate 5th card (~48 of them) — about 9-10x too slow to do without
+   * blocking. The optimization: 16 of the 32 hold masks never hold
+   * position 4 (bit 4 clear) — those holds discard the 5th card entirely,
+   * so their EV cannot be what decides between candidates, and depends on
+   * which candidate is chosen only through the negligible, sub-1-card
+   * deck-composition effect of removing one more card from the unseen
+   * pool. They're computed exactly ONCE, using the 48-card deck before any
+   * candidate is chosen. Only the 16 masks that DO hold position 4 (bit 4
+   * set) genuinely need recomputing per candidate — and they're cheaper
+   * anyway, since none of them is the priciest all-discard case (which
+   * holds nothing, so never sets bit 4). Net effect: about 1.5 full
+   * analyzeHolds-equivalent calls' worth of work instead of ~48, with no
+   * approximation of WHICH card wins.
+   */
+  function chooseDreamCard(fourCards, bet, paytable) {
+    var pays = buildPayArray(bet, paytable);
+    var evalFn = makeEvaluator(paytable);
+    var includeJoker = paytable.deck === 53;
+    var deck48 = remainingDeck(fourCards, includeJoker);
+
+    var independentBest = -Infinity;
+    for (var mask = 0; mask < 16; mask++) {
+      var ev = analyzeMask(fourCards, deck48, mask, pays, evalFn).ev;
+      if (ev > independentBest) independentBest = ev;
+    }
+
+    var maxCard = includeJoker ? 52 : 51;
+    var known = {};
+    fourCards.forEach(function (c) { known[c] = true; });
+    var bestCard = -1;
+    var bestEV = -Infinity;
+    for (var c = 0; c <= maxCard; c++) {
+      if (known[c]) continue;
+      var hand5 = fourCards.concat([c]);
+      var deck47 = remainingDeck(hand5, includeJoker);
+      var dependentBest = -Infinity;
+      for (var m = 16; m < 32; m++) {
+        var mev = analyzeMask(hand5, deck47, m, pays, evalFn).ev;
+        if (mev > dependentBest) dependentBest = mev;
+      }
+      var totalBest = Math.max(independentBest, dependentBest);
+      if (totalBest > bestEV) { bestEV = totalBest; bestCard = c; }
+    }
+    return { card: bestCard, ev: bestEV };
+  }
+
+  /* Same as chooseDreamCard, spread across macrotasks so the UI never blocks. */
+  function chooseDreamCardAsync(fourCards, bet, paytable) {
+    var pays = buildPayArray(bet, paytable);
+    var evalFn = makeEvaluator(paytable);
+    var includeJoker = paytable.deck === 53;
+    var deck48 = remainingDeck(fourCards, includeJoker);
+    var maxCard = includeJoker ? 52 : 51;
+    var known = {};
+    fourCards.forEach(function (c) { known[c] = true; });
+    var candidates = [];
+    for (var c = 0; c <= maxCard; c++) if (!known[c]) candidates.push(c);
+
+    var independentBest = -Infinity;
+    for (var mask = 0; mask < 16; mask++) {
+      var ev = analyzeMask(fourCards, deck48, mask, pays, evalFn).ev;
+      if (ev > independentBest) independentBest = ev;
+    }
+
+    var bestCard = -1;
+    var bestEV = -Infinity;
+    var idx = 0;
+    var cancelled = false;
+    var promise = new Promise(function (resolve, reject) {
+      function step() {
+        if (cancelled) { reject(new Error('cancelled')); return; }
+        var deadline = Date.now() + 30;
+        while (idx < candidates.length && Date.now() < deadline) {
+          var c = candidates[idx];
+          var hand5 = fourCards.concat([c]);
+          var deck47 = remainingDeck(hand5, includeJoker);
+          var dependentBest = -Infinity;
+          for (var m = 16; m < 32; m++) {
+            var mev = analyzeMask(hand5, deck47, m, pays, evalFn).ev;
+            if (mev > dependentBest) dependentBest = mev;
+          }
+          var totalBest = Math.max(independentBest, dependentBest);
+          if (totalBest > bestEV) { bestEV = totalBest; bestCard = c; }
+          idx++;
+        }
+        if (idx < candidates.length) {
+          setTimeout(step, 0);
+        } else {
+          resolve({ card: bestCard, ev: bestEV });
+        }
+      }
+      step();
+    });
+    return { promise: promise, cancel: function () { cancelled = true; } };
+  }
+
   function shuffledDeck(exclude, rng, includeJoker) {
     rng = rng || Math.random;
     var inHand = {};
@@ -789,6 +898,8 @@
     remainingDeck: remainingDeck,
     analyzeHolds: analyzeHolds,
     analyzeHoldsAsync: analyzeHoldsAsync,
+    chooseDreamCard: chooseDreamCard,
+    chooseDreamCardAsync: chooseDreamCardAsync,
     shuffledDeck: shuffledDeck
   };
 });

@@ -37,7 +37,7 @@
     { key: 'double-double-bonus-9-6', label: 'Double Double Bonus' },
     { key: 'triple-double-bonus-9-7', label: 'Triple Double Bonus' },
     { key: 'triple-triple-bonus', label: 'Triple Triple Bonus' },
-    { key: 'deuces-wild-nsu-100', label: 'Deuces Wild' },
+    { key: 'deuces-wild-full-pay', label: 'Deuces Wild' },
     { key: 'jokers-wild-kings-or-better', label: 'Jokers Wild' }
   ];
 
@@ -601,7 +601,7 @@
         return api;
       },
       /*
-       * Switch games (e.g. 'deuces-wild-nsu-100', or a custom paytable
+       * Switch games (e.g. 'deuces-wild-full-pay', or a custom paytable
        * object). Credits carry over; the current hand, stats, and hint/
        * analysis state reset since they are specific to the previous game.
        */
