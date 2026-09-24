@@ -5,7 +5,7 @@
  */
 'use strict';
 
-var CACHE_NAME = 'vpt-cache-v9';
+var CACHE_NAME = 'vpt-cache-v10';
 var APP_SHELL = [
   './',
   './index.html',
@@ -29,7 +29,12 @@ self.addEventListener('activate', function (event) {
   event.waitUntil(
     caches.keys()
       .then(function (keys) {
-        return Promise.all(keys.filter(function (k) { return k !== CACHE_NAME; }).map(function (k) {
+        // Cache storage is shared by every app on this origin (the multi-line
+        // app under multi/ keeps its own vpm-cache-*), so only clear out
+        // this app's own old versions.
+        return Promise.all(keys.filter(function (k) {
+          return k.indexOf('vpt-cache-') === 0 && k !== CACHE_NAME;
+        }).map(function (k) {
           return caches.delete(k);
         }));
       })
@@ -41,19 +46,25 @@ self.addEventListener('fetch', function (event) {
   var req = event.request;
   if (req.method !== 'GET') return;
 
-  // Navigations (index.html, possibly with ?hand=...&game=... query params)
-  // always resolve to the cached app shell page: the app is entirely
-  // client-side and reads query params from location.search at runtime, so
-  // there's no server-side reason to distinguish them.
+  // Navigations to this app's own page (index.html, possibly with
+  // ?hand=...&game=... query params) resolve to the cached app shell: the
+  // app is entirely client-side and reads query params at runtime. Only
+  // this page, though — this worker's scope is the whole site, which also
+  // hosts other pages (the multi-line app under multi/, discord.html), and
+  // answering those with this app's shell would hijack them.
   if (req.mode === 'navigate') {
-    event.respondWith(
-      caches.match('./index.html').then(function (cached) { return cached || fetch(req); })
-    );
+    var scopePath = new URL(self.registration.scope).pathname;
+    var path = new URL(req.url).pathname;
+    if (path === scopePath || path === scopePath + 'index.html') {
+      event.respondWith(
+        ownCacheMatch('./index.html').then(function (cached) { return cached || fetch(req); })
+      );
+    }
     return;
   }
 
   event.respondWith(
-    caches.match(req).then(function (cached) {
+    ownCacheMatch(req).then(function (cached) {
       if (cached) return cached;
       return fetch(req).then(function (res) {
         if (res.ok) {
@@ -62,6 +73,13 @@ self.addEventListener('fetch', function (event) {
         }
         return res;
       });
-    }).catch(function () { return caches.match(req); })
+    }).catch(function () { return ownCacheMatch(req); })
   );
 });
+
+// Look only in this app's cache: a bare caches.match() searches every cache
+// on the origin, and the multi-line app caches its own copy of the shared
+// js/engine.js and css/gameking.css, which can be an older version.
+function ownCacheMatch(req) {
+  return caches.open(CACHE_NAME).then(function (cache) { return cache.match(req); });
+}
