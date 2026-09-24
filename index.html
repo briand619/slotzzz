@@ -177,33 +177,28 @@
     pending = true;
     requestAnimationFrame(fitToScreen);
   }
-  // Three things actually change the widget's overall footprint: the
-  // paytable's row count (switching games), the analysis panel (opening it
-  // adds a table; its row count varies 8-9 depending on the hand), and —
-  // for multiplay Dream Card games — the multi-hand results grid (its row
-  // count is the play count, 3/5/10, and it switches between empty/
-  // pending/results content). Every other piece of UI — card faces, HELD
-  // tags, hint/best outlines, the message/verdict/stats text, button
-  // labels — sits in a row with a fixed CSS height and never changes the
-  // layout, so it must NOT be observed: watching the whole widget subtree
-  // meant holding a single card (a '.vpt-held' class toggle that changes
-  // nothing about size) forced a full synchronous layout read and a style
-  // rewrite on every tap, for no reason — real overhead that adds up over
-  // a long session. Scoping to just these elements eliminates that
-  // entirely. (The settings modal is appended to <body>, not a descendant
-  // of this widget, so it never needs to be observed here.)
+  // Only two things ever actually change the widget's overall footprint:
+  // the paytable's row count (switching games) and the analysis panel
+  // (opening it adds a table; its row count varies 8-9 depending on the
+  // hand). Every other piece of UI — card faces, HELD tags, hint/best
+  // outlines, the message/verdict/stats text, button labels — sits in a
+  // row with a fixed CSS height and never changes the layout, so it must
+  // NOT be observed: watching the whole widget subtree meant holding a
+  // single card (a '.vpt-held' class toggle that changes nothing about
+  // size) forced a full synchronous layout read and a style rewrite on
+  // every tap, for no reason — real overhead that adds up over a long
+  // session. Scoping to just these two elements eliminates that entirely.
+  // (The settings modal is appended to <body>, not a descendant of this
+  // widget, so it never needs to be observed here.)
   var paytableBody = vpt.querySelector('.vpt-paytable tbody');
   var analysisPanel = vpt.querySelector('.vpt-analysis');
-  var multiHandsPanel = vpt.querySelector('.vpt-multihands');
   var fitObserver = new MutationObserver(scheduleFit);
   fitObserver.observe(paytableBody, { childList: true });
-  [analysisPanel, multiHandsPanel].forEach(function (el) {
-    fitObserver.observe(el, {
-      attributes: true,
-      attributeFilter: ['class'],
-      childList: true,
-      subtree: true
-    });
+  fitObserver.observe(analysisPanel, {
+    attributes: true,
+    attributeFilter: ['class'],
+    childList: true,
+    subtree: true
   });
   window.addEventListener('resize', scheduleFit);
   window.addEventListener('orientationchange', scheduleFit);
