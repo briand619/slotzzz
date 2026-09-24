@@ -5,7 +5,15 @@ const E = require('../js/engine.js');
 
 let passed = 0;
 function test(name, fn) {
-  fn();
+  const result = fn();
+  if (result && typeof result.then === 'function') {
+    // Async test: only count/print once its assertions have actually run,
+    // so a rejected promise fails loudly instead of racing past silently.
+    return result.then(() => {
+      passed++;
+      console.log('  ok - ' + name);
+    });
+  }
   passed++;
   console.log('  ok - ' + name);
 }
@@ -302,4 +310,50 @@ test('Jokers Wild deck includes the joker for draws', () => {
   assert.ok(deck.includes(E.JOKER));
 });
 
-console.log(passed + ' tests passed');
+test('minPair: kings makes jacks and queens pay nothing (Triple Bonus Poker)', () => {
+  const pt = { family: 'standard', quadRule: 'rank-tier', minPair: 'kings', rows: [] };
+  const C = E.CATEGORY;
+  assert.strictEqual(E.resolveCategory(hand('JS JH 7D 4C 2H'), pt), C.NOTHING);
+  assert.strictEqual(E.resolveCategory(hand('QS QH 7D 4C 2H'), pt), C.NOTHING);
+  assert.strictEqual(E.resolveCategory(hand('KS KH 7D 4C 2H'), pt), C.KINGS_OR_BETTER);
+  assert.strictEqual(E.resolveCategory(hand('AS AH 7D 4C 2H'), pt), C.KINGS_OR_BETTER);
+  assert.strictEqual(E.resolveCategory(hand('JS JH 7D 7C 2H'), pt), C.TWO_PAIR);
+});
+
+test('chooseDreamCard completes an obvious 4-to-royal draw', () => {
+  const four = hand('AS KS QS JS'); // needs exactly 10S for the royal
+  const result = E.chooseDreamCard(four, 5, TDB);
+  assert.strictEqual(E.cardToString(result.card), '10S');
+  assert.strictEqual(result.ev, 4000);
+});
+
+test('chooseDreamCard matches a brute-force search over all 48 candidates', () => {
+  const four = hand('9H 6H 3C 9S'); // a middling pair, not an obvious win
+  const known = {};
+  four.forEach((c) => (known[c] = true));
+  let bruteBest = -Infinity;
+  let bruteCard = -1;
+  for (let c = 0; c <= 51; c++) {
+    if (known[c]) continue;
+    const ev = E.analyzeHolds(four.concat([c]), 5, TDB)[0].ev;
+    if (ev > bruteBest) { bruteBest = ev; bruteCard = c; }
+  }
+  const result = E.chooseDreamCard(four, 5, TDB);
+  assert.strictEqual(result.ev, bruteBest);
+  // A tie between candidates is possible in principle; only require that
+  // the optimized pick actually achieves the brute-forced maximum.
+  const achieved = E.analyzeHolds(four.concat([result.card]), 5, TDB)[0].ev;
+  assert.strictEqual(achieved, bruteBest);
+});
+
+(async () => {
+  await test('chooseDreamCardAsync resolves to the same pick as the sync version', async () => {
+    const four = hand('10D KH 3C 3D');
+    const sync = E.chooseDreamCard(four, 5, TDB);
+    const job = E.chooseDreamCardAsync(four, 5, TDB);
+    const asyncResult = await job.promise;
+    assert.strictEqual(asyncResult.card, sync.card);
+    assert.strictEqual(asyncResult.ev, sync.ev);
+  });
+  console.log(passed + ' tests passed');
+})();
