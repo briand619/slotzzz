@@ -212,46 +212,6 @@
       ]
     },
     /*
-     * Approximation: real IGT "Dream Card" games are single-hand only — you
-     * pay double your normal wager as a flat fee to enable the feature (see
-     * chooseDreamCard/chooseDreamCardAsync in this file for the mechanic
-     * itself), and multi-play (3/5/10 simultaneous hands) is a separate,
-     * unrelated IGT product. Combining the two here isn't a documented
-     * casino product; it's an extrapolation, flagged the same way Triple
-     * Triple Bonus's "kicker suited to the quad" approximation is. The
-     * trigger probability (26.7%) is Wizard of Odds' reported figure for
-     * Triple Double Bonus specifically; other base games trigger at
-     * different rates in real Dream Card machines.
-     *
-     * Paytable rows are identical to Triple Double Bonus (9-7) above —
-     * Dream Card doesn't change what a hand pays, only how often you get a
-     * pre-optimized 5th card before you even choose a hold.
-     */
-    'triple-double-bonus-dream-card': {
-      id: 'triple-double-bonus-dream-card',
-      name: 'TRIPLE DOUBLE BONUS DREAM CARD',
-      family: 'standard',
-      quadRule: 'kicker-tier',
-      deck: 52,
-      dreamCard: { probability: 0.267 },
-      multiplay: { options: [3, 5, 10], defaultCount: 3 },
-      rows: [
-        { category: CATEGORY.ROYAL_FLUSH, label: 'ROYAL FLUSH', pays: [250, 500, 750, 1000, 4000] },
-        { category: CATEGORY.STRAIGHT_FLUSH, label: 'STRAIGHT FLUSH', pays: [50, 100, 150, 200, 250] },
-        { category: CATEGORY.FOUR_ACES_KICKER, label: '4 ACES W/2-4', pays: [800, 1600, 2400, 3200, 4000] },
-        { category: CATEGORY.FOUR_LOW_KICKER, label: '4 2-4 W/A-4', pays: [400, 800, 1200, 1600, 2000] },
-        { category: CATEGORY.FOUR_ACES, label: '4 ACES', pays: [160, 320, 480, 640, 800] },
-        { category: CATEGORY.FOUR_LOW, label: '4 2S, 3S OR 4S', pays: [80, 160, 240, 320, 400] },
-        { category: CATEGORY.FOUR_5_TO_K, label: '4 5S THRU KS', pays: [50, 100, 150, 200, 250] },
-        { category: CATEGORY.FULL_HOUSE, label: 'FULL HOUSE', pays: [9, 18, 27, 36, 45] },
-        { category: CATEGORY.FLUSH, label: 'FLUSH', pays: [7, 14, 21, 28, 35] },
-        { category: CATEGORY.STRAIGHT, label: 'STRAIGHT', pays: [4, 8, 12, 16, 20] },
-        { category: CATEGORY.THREE_OF_A_KIND, label: '3 OF A KIND', pays: [2, 4, 6, 8, 10] },
-        { category: CATEGORY.TWO_PAIR, label: 'TWO PAIR', pays: [1, 2, 3, 4, 5] },
-        { category: CATEGORY.JACKS_OR_BETTER, label: 'JACKS OR BETTER', pays: [1, 2, 3, 4, 5] }
-      ]
-    },
-    /*
      * Approximation: real-money Triple Triple Bonus Poker adds a further
      * "kicker suited to the quad" super-tier on top of the rank/kicker tiers
      * modeled here. That suit-matching rule is not faithfully reproduced —
@@ -792,110 +752,6 @@
     return { promise: promise, cancel: function () { cancelled = true; } };
   }
 
-  /*
-   * Dream Card: given 4 already-dealt cards (hand positions 0-3), finds the
-   * 5th card — from the remaining deck — that maximizes the resulting
-   * hand's best-hold EV, exactly. The Dream Card itself always ends up at
-   * position 4; which physical slot displays it is cosmetic and doesn't
-   * affect this math.
-   *
-   * A naive brute force would run a full analyzeHolds (32 holds) once per
-   * candidate 5th card (~48 of them) — about 9-10x too slow to do without
-   * blocking. The optimization: 16 of the 32 hold masks never hold
-   * position 4 (bit 4 clear) — those holds discard the 5th card entirely,
-   * so their EV cannot be what decides between candidates, and depends on
-   * which candidate is chosen only through the negligible, sub-1-card
-   * deck-composition effect of removing one more card from the unseen
-   * pool. They're computed exactly ONCE, using the 48-card deck before any
-   * candidate is chosen. Only the 16 masks that DO hold position 4 (bit 4
-   * set) genuinely need recomputing per candidate — and they're cheaper
-   * anyway, since none of them is the priciest all-discard case (which
-   * holds nothing, so never sets bit 4). Net effect: about 1.5 full
-   * analyzeHolds-equivalent calls' worth of work instead of ~48, with no
-   * approximation of WHICH card wins.
-   */
-  function chooseDreamCard(fourCards, bet, paytable) {
-    var pays = buildPayArray(bet, paytable);
-    var evalFn = makeEvaluator(paytable);
-    var includeJoker = paytable.deck === 53;
-    var deck48 = remainingDeck(fourCards, includeJoker);
-
-    var independentBest = -Infinity;
-    for (var mask = 0; mask < 16; mask++) {
-      var ev = analyzeMask(fourCards, deck48, mask, pays, evalFn).ev;
-      if (ev > independentBest) independentBest = ev;
-    }
-
-    var maxCard = includeJoker ? 52 : 51;
-    var known = {};
-    fourCards.forEach(function (c) { known[c] = true; });
-    var bestCard = -1;
-    var bestEV = -Infinity;
-    for (var c = 0; c <= maxCard; c++) {
-      if (known[c]) continue;
-      var hand5 = fourCards.concat([c]);
-      var deck47 = remainingDeck(hand5, includeJoker);
-      var dependentBest = -Infinity;
-      for (var m = 16; m < 32; m++) {
-        var mev = analyzeMask(hand5, deck47, m, pays, evalFn).ev;
-        if (mev > dependentBest) dependentBest = mev;
-      }
-      var totalBest = Math.max(independentBest, dependentBest);
-      if (totalBest > bestEV) { bestEV = totalBest; bestCard = c; }
-    }
-    return { card: bestCard, ev: bestEV };
-  }
-
-  /* Same as chooseDreamCard, spread across macrotasks so the UI never blocks. */
-  function chooseDreamCardAsync(fourCards, bet, paytable) {
-    var pays = buildPayArray(bet, paytable);
-    var evalFn = makeEvaluator(paytable);
-    var includeJoker = paytable.deck === 53;
-    var deck48 = remainingDeck(fourCards, includeJoker);
-    var maxCard = includeJoker ? 52 : 51;
-    var known = {};
-    fourCards.forEach(function (c) { known[c] = true; });
-    var candidates = [];
-    for (var c = 0; c <= maxCard; c++) if (!known[c]) candidates.push(c);
-
-    var independentBest = -Infinity;
-    for (var mask = 0; mask < 16; mask++) {
-      var ev = analyzeMask(fourCards, deck48, mask, pays, evalFn).ev;
-      if (ev > independentBest) independentBest = ev;
-    }
-
-    var bestCard = -1;
-    var bestEV = -Infinity;
-    var idx = 0;
-    var cancelled = false;
-    var promise = new Promise(function (resolve, reject) {
-      function step() {
-        if (cancelled) { reject(new Error('cancelled')); return; }
-        var deadline = Date.now() + 30;
-        while (idx < candidates.length && Date.now() < deadline) {
-          var c = candidates[idx];
-          var hand5 = fourCards.concat([c]);
-          var deck47 = remainingDeck(hand5, includeJoker);
-          var dependentBest = -Infinity;
-          for (var m = 16; m < 32; m++) {
-            var mev = analyzeMask(hand5, deck47, m, pays, evalFn).ev;
-            if (mev > dependentBest) dependentBest = mev;
-          }
-          var totalBest = Math.max(independentBest, dependentBest);
-          if (totalBest > bestEV) { bestEV = totalBest; bestCard = c; }
-          idx++;
-        }
-        if (idx < candidates.length) {
-          setTimeout(step, 0);
-        } else {
-          resolve({ card: bestCard, ev: bestEV });
-        }
-      }
-      step();
-    });
-    return { promise: promise, cancel: function () { cancelled = true; } };
-  }
-
   function shuffledDeck(exclude, rng, includeJoker) {
     rng = rng || Math.random;
     var inHand = {};
@@ -933,8 +789,6 @@
     remainingDeck: remainingDeck,
     analyzeHolds: analyzeHolds,
     analyzeHoldsAsync: analyzeHoldsAsync,
-    chooseDreamCard: chooseDreamCard,
-    chooseDreamCardAsync: chooseDreamCardAsync,
     shuffledDeck: shuffledDeck
   };
 });
