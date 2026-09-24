@@ -64,6 +64,10 @@ behavior.
 > proportionally to bet (no 5-coin jackpot jump), matching how those games
 > are typically paid, unlike the Jacks-or-Better family's 4000-coin jump.
 
+This app is single-line, classic games only. Multi-line play (Triple / Five /
+Ten Play) is a separate app in [`multi/`](multi/README.md) that shares this
+app's engine and skin.
+
 ## Running
 
 It is plain HTML/CSS/JS with no dependencies — open `index.html` directly in a

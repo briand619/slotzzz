@@ -236,6 +236,10 @@ postMessage for iframe embedding. See `frontend/video-poker/README.md` for
 the full API, and run its engine tests with
 `node frontend/video-poker/test/engine.test.js`.
 
+`frontend/video-poker/multi/` is a separate multi-line app (Triple / Five /
+Ten Play) built on the same engine and skin — see
+`frontend/video-poker/multi/README.md`.
+
 ## How the Math Works
 
 All theoretical metrics come from `TheoreticalAnalyzer`, which enumerates every

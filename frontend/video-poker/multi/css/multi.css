@@ -1,0 +1,123 @@
+/*
+ * Multi-play layout on top of the classic skin (../../css/gameking.css).
+ * Everything here is scoped to .vpm so the classic app is unaffected.
+ */
+
+/* A fixed natural width; the page scales the whole widget to the screen. */
+.vpm { width: 1100px; max-width: none; }
+
+.vpm-title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: var(--gk-cyan);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.7);
+  margin-bottom: 8px;
+}
+
+/* ---------- Stacked mini hands ---------- */
+
+.vpm-minis {
+  --k: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.vpm-row {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+
+/* Same column widths as the playable hand, so each mini card sits directly above its card. */
+.vpm-col {
+  width: 190px;
+  display: flex;
+  justify-content: center;
+}
+
+/*
+ * A mini card is the full-size classic card scaled down — the identical
+ * face, border, and shadow, just smaller — inside a box sized to the
+ * scaled footprint so it lays out correctly.
+ */
+.vpm-mini {
+  width: calc(190px * var(--k));
+  height: calc(250px * var(--k));
+}
+
+.vpm-mini > .vpt-card {
+  transform: scale(var(--k));
+  transform-origin: 0 0;
+  cursor: default;
+}
+
+/* ---------- Win labels ---------- */
+
+.vpm-pill {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 4px 18px;
+  border-radius: 8px;
+  background: rgba(0, 0, 40, 0.85);
+  border: 2px solid var(--gk-yellow);
+  color: var(--gk-yellow);
+  font-size: calc(28px + 12px * var(--k));
+  font-weight: bold;
+  letter-spacing: 2px;
+  white-space: nowrap;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.vpm-pill.vpt-open { display: block; }
+
+.vpm .vpt-cards { position: relative; }
+.vpm-main-pill { --k: 1; top: calc(26px + 125px); }
+
+/* ---------- Trainer strip / status ---------- */
+
+.vpm .vpt-btn-hint {
+  flex: 0 0 auto;
+  font-size: 13px;
+  padding: 6px 14px;
+}
+
+.vpm-selects { display: flex; gap: 8px; }
+.vpm .vpt-gameselect { max-width: 340px; }
+
+.vpm-countselect {
+  font-family: var(--gk-font);
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: var(--gk-yellow-dim);
+  background: #000040;
+  border: 1px solid var(--gk-yellow-dim);
+  border-radius: 4px;
+  padding: 3px 4px;
+}
+.vpm-countselect option { background: #000040; color: var(--gk-yellow); }
+
+/* ---------- Overlays (on <body>, outside .vpt) ---------- */
+
+.vpm-overlay, .vpm-overlay * { box-sizing: border-box; }
+.vpm-overlay { font-family: var(--gk-font); }
+
+.vpm-modal-close { display: block; width: 100%; margin-top: 16px; }
+
+.vpm-pays-modal, .vpm-analysis-modal { max-width: 560px; }
+
+/* Overlays are not scaled with the widget, so on a phone this table has only
+   the real screen width: tighten it so all five bet columns fit. */
+.vpm-pays-modal { padding: 14px 12px 16px; }
+.vpm-pays-modal .vpt-paytable { position: relative; font-size: 13px; letter-spacing: 0; }
+.vpm-pays-modal .vpt-paytable td { padding: 1px 4px; }
+
+.vpm-analysis-modal .vpt-analysis { padding: 0; border-top: none; background: none; }
